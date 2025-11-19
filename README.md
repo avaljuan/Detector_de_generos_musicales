@@ -1,1 +1,1 @@
-# Detector-de-g-neros-musicales
+# Detector-de-géneros-musicales
