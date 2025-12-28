@@ -1,0 +1,137 @@
+---
+title: "Mario"
+author: "Mario Martínez Guillén"
+date: "2025-12-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Seleccionar función adecuada
+
+Primero cargo el paquete `tuneR` para poder importar los archivos MP3 como objetos wave.
+
+Me voy a encargar de que mis canciones estén normalizadas, que sean monocanal y que duren 1:30.
+
+```{r}
+pacman::p_load(tuneR)
+
+
+audio <- readMP3("reggae/Alborosie - Come My Way ｜ Official Music Video [fisbNNnKURY].mp3")
+
+# Mono  y Norm
+
+audio <- mono(audio, which = "both")
+audio <- normalize(audio)
+
+#Duracion
+
+audio <- extractWave(audio, from = 0, to = 90, xunit = "time")
+
+```
+
+Voy a calcular la energía media
+
+```{r}
+x <- audio@left
+
+# Recomendado: quitar DC offset (restar la media)
+x <- x - mean(x)
+
+# Autocorrelación en lag 0: energía promedio
+phi0 <- mean(x^2)
+
+phi0
+
+```
+Y comparo usando la función `acf` 
+
+```{r}
+# Autocovarianza (equivale a autocorrelación no normalizada, con media quitada)
+acv <- acf(audio@left, plot = FALSE, type = "covariance")
+
+phi0_acf <- as.numeric(acv$acf[1])  # lag 0
+phi0_acf
+```
+Las dos maneras sirven así que eligo la más cómoda que es usar la función ya definida
+
+
+Vamos a crear ahora un chunk que lea las canciones, calcule sus energías medías, y lo vaya guardando en un dataframe.
+
+# Programa en sí
+
+### Limpiamos
+
+```{r}
+rm(list = ls())
+```
+
+
+## Paquetes
+
+```{r}
+pacman::p_load(tuneR,dplyr,tidyverse,tidyr)
+```
+
+
+## Función que importa los mpr a wave en el formato que queremos
+
+```{r}
+importar_audio <- function(path){
+  require(tuneR)
+  w <- readMP3(path)
+
+  # Mono  y Norm
+  
+  w <- mono(w, which = "both")
+  w <- normalize(w)
+  
+  #Duracion
+  
+  w <- extractWave(w, from = 0, to = 90, xunit = "time")
+
+  return(w)
+}
+```
+
+## Importar los datos
+
+```{r}
+names_files <- list.files(path="reggae/")
+paths       <- paste0("reggae/",names_files)
+songs_list  <- list()
+
+for(path in paths) {
+  songs_list <- append(songs_list,importar_audio(path = path))
+}
+
+```
+
+## Calcular valores y guardarlos en un dataframe
+
+```{r}
+avg_energy <- c()
+
+for (song in songs_list) {
+  sound      <- song@left
+  
+  acv        <- acf(sound, plot = FALSE, type = "covariance", lag.max = 0)
+  
+  avg_energy <- c(avg_energy,as.numeric(acv$acf[1]))
+}
+rm(acv) #quitamos esto de la memoria que ya no nos sirve
+
+
+features <- data.frame(avg_energy = avg_energy)
+features <- features %>% mutate(label = "reggae")
+
+```
+
+## Exportar a csv
+
+```{r}
+write.csv(features, "features_reggae.csv", row.names = FALSE)
+```
+

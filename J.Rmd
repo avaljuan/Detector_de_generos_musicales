@@ -1,0 +1,77 @@
+---
+title: "J"
+output: html_document
+date: "2025-12-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Genre : opera
+ZCR
+
+
+Librerias
+```{r}
+library(tuneR)
+library(seewave)
+library(av)
+```
+
+
+```{r}
+mp3_a_wav <- function(mp3_path, wav_path = NULL) {
+
+  if (!file.exists(mp3_path)) {
+    stop("El archivo MP3 no existe")
+  }
+
+  if (is.null(wav_path)) {
+    wav_path <- sub("\\.mp3$", ".wav", mp3_path, ignore.case = TRUE)
+  }
+
+  # av_audio_convert usa argumentos por POSICIÓN
+  av::av_audio_convert(mp3_path, wav_path)
+
+  message("Conversión completada: ", wav_path)
+  return(wav_path)
+}
+
+
+audio <- mp3_a_wav("proyecto_From.mp3")
+
+```
+
+
+
+Antes de la extracción de características se elimina la componente DC restando la media de la señal y se normaliza su amplitud al rango [-1,1], con el fin de garantizar la comparabilidad entre audios
+```{r}
+
+audio_wap <- readWave("proyecto_From.wav")
+
+# Mono
+x <- (audio_wap@left + audio_wap@right) / 2
+
+# Normalización
+normalizar_audio <- function(x) {
+  x <- x - mean(x)
+  x <- x / max(abs(x))
+  return(x)
+}
+
+x_norm <- normalizar_audio(x)
+range(x_norm)
+```
+
+ZCR
+```{r}
+fs <- audio_wap@samp.rate #frq muestreo
+ms <- 20  # ejericico clase: entre 10 y 20 ms
+wl <- as.integer((ms/1000) * fs)
+
+# ZCR
+ZCR <- zcr(x_norm, f = fs, wl = wl, ovlp = 50, plot = TRUE)
+
+```
+
