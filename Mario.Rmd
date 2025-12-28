@@ -127,5 +127,12 @@ rm(acv) #quitamos esto de la memoria que ya no nos sirve
 
 features <- data.frame(avg_energy = avg_energy)
 features <- features %>% mutate(label = "reggae")
+
+```
+
+## Exportar a csv
+
+```{r}
+
 ```
 
