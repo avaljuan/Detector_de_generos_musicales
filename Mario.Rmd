@@ -28,7 +28,7 @@ audio <- normalize(audio)
 
 #Duracion
 
-audio <- extractWave(audio, from = 0, to = 90, xunit = "time")
+audio <- extractWave(audio, from = 30, to = 120, xunit = "time")
 
 ```
 
@@ -90,7 +90,7 @@ importar_audio <- function(path){
   
   #Duracion
   
-  w <- extractWave(w, from = 0, to = 90, xunit = "time")
+  w <- extractWave(w, from = 30, to = 120, xunit = "time")
 
   return(w)
 }
@@ -113,7 +113,6 @@ for(path in paths) {
 
 ```{r}
 avg_energy <- c()
-avg        <- c()
 
 for (song in songs_list) {
   sound      <- song@left
@@ -133,6 +132,6 @@ features <- features %>% mutate(label = "reggae")
 ## Exportar a csv
 
 ```{r}
-
+write.csv(features, "features_reggae.csv", row.names = FALSE)
 ```
 
