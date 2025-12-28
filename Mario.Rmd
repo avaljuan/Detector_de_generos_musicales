@@ -113,7 +113,6 @@ for(path in paths) {
 
 ```{r}
 avg_energy <- c()
-avg        <- c()
 
 for (song in songs_list) {
   sound      <- song@left
@@ -133,6 +132,6 @@ features <- features %>% mutate(label = "reggae")
 ## Exportar a csv
 
 ```{r}
-
+write.csv(features, "features_reggae.csv", row.names = FALSE)
 ```
 
