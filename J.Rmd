@@ -28,7 +28,7 @@ audio <- readMP3("proyecto_From.mp3")
 audio <- mono(audio, which = "both")
 
 # Recorte a 90 s
-audio <- extractWave(audio, from = 0, to = 90, xunit = "time")
+audio <- extractWave(audio, from = 30, to = 120, xunit = "time")
 
 # Quitar DC  + normalizar a [-1,1]
 x <- audio@left
