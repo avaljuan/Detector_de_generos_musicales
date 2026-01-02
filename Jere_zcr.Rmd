@@ -1,0 +1,164 @@
+---
+title: "jj"
+output: html_document
+date: "2026-01-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list = ls())
+```
+
+
+```{r}
+pacman::p_load(tuneR, seewave, dplyr)
+
+```
+
+
+```{r}
+importar_audio <- function(path){
+w <- readWave(path)
+
+# Mono y Normalización
+
+w <- mono(w, which = "both")
+w <- normalize(w)   # deja amplitud en [-1,1] aprox.
+
+# Duración: 0 a 90 segundos (como tu compañero)
+
+w <- extractWave(w, from = 0, to = 90, xunit = "time")
+
+return(w)
+}
+
+
+```
+
+
+CALCULO DE ZCR Y DEMAS ESTADIITICAS IMPORTANTES PARA EL ML
+```{r}
+zcr_stats <- function(w, ms = 20, ovlp = 50){
+x  <- w@left
+fs <- w@samp.rate
+
+# Quitar DC (como recomienda el profe)
+
+x <- x - mean(x)
+
+wl <- as.integer((ms/1000) * fs)
+Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+zvals <- Z[, "zcr"]
+
+slope <- coef(lm(zvals ~ seq_along(zvals)))[2]
+
+data.frame(
+zcr_mean   = mean(zvals),
+zcr_sd     = sd(zvals),
+zcr_median = median(zvals),
+zcr_iqr    = IQR(zvals),
+zcr_min    = min(zvals),
+zcr_max    = max(zvals),
+zcr_p10    = as.numeric(quantile(zvals, 0.10)),
+zcr_p90    = as.numeric(quantile(zvals, 0.90)),
+zcr_slope  = as.numeric(slope)
+)
+}
+
+```
+
+
+graficas de zcr
+```{r}
+guardar_plot_zcr <- function(w, file_png, ms = 20, ovlp = 50, titulo = ""){
+x  <- w@left
+fs <- w@samp.rate
+x <- x - mean(x)
+
+wl <- as.integer((ms/1000) * fs)
+Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+zvals <- Z[, "zcr"]
+
+png(file_png, width = 1200, height = 650)
+plot(zvals, type = "l", main = titulo, xlab = "Frames", ylab = "ZCR")
+abline(h = mean(zvals), lty = 2)
+dev.off()
+}
+
+```
+
+guardar los datis
+```{r}
+wav_dir <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/cancionwav"
+plot_dir <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/plots_zcr"
+dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+names_files <- list.files(path = wav_dir, pattern = "\\.wav$", ignore.case = TRUE)
+paths <- file.path(wav_dir, names_files)
+
+songs_list <- list()
+
+for(path in paths) {
+songs_list <- append(songs_list, list(importar_audio(path = path)))
+}
+
+```
+
+
+
+```{r}
+features_all <- data.frame()
+
+for(i in seq_along(songs_list)) {
+song <- songs_list[[i]]
+fname <- names_files[i]
+
+feats <- zcr_stats(song, ms = 20, ovlp = 50)
+
+# plot (para memoria)
+
+png_path <- file.path(plot_dir, paste0(tools::file_path_sans_ext(fname), "_zcr.png"))
+guardar_plot_zcr(song, png_path, ms = 20, ovlp = 50, titulo = paste("ZCR -", fname))
+
+row <- data.frame(
+file = fname,
+fs = song@samp.rate,
+plot_path = png_path,
+feats,
+row.names = NULL,
+check.names = FALSE
+)
+
+features_all <- rbind(features_all, row)
+}
+
+head(features_all)
+nrow(features_all)
+
+```
+
+
+etiqueta
+```{r}
+features_all <- features_all %>% mutate(label = "Opera")
+
+```
+
+```{r}
+out_csv <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/zcr_features.csv"
+write.csv(features_all, out_csv, row.names = FALSE)
+
+file.exists(out_csv)
+out_csv
+
+
+```
+```{r}
+library(readr)
+zcr_features <- read_csv("~/MASTER/An Señales/proyecto grupo/zcr_features.csv")
+View(zcr_features)
+```
+
