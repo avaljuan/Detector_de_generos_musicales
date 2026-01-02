@@ -18,25 +18,25 @@ pacman::p_load("dplyr")
 
 ```{r}
 # # 1. Forzar la limpieza de la configuración previa
-# library(reticulate)
-# library(dplyr)
-# 
+ library(reticulate)
+ library(dplyr)
+#
 # # 2. Instalar Miniconda (esto crea un Python real y funcional para R)
 # # Di que sí (Y) a cualquier pregunta en la consola
-# reticulate::install_miniconda(force = TRUE)
-# 
+ reticulate::install_miniconda(force = TRUE)
+#
 # # 3. Crear un entorno específico para tu clasificador de audio
 # # Usaremos Python 3.10 porque es el que mejor se lleva con Librosa
-# reticulate::conda_create("env_audio", python_version = "3.10")
-# 
-# # 4. Instalar las librerías necesarias en ese nuevo entorno
-# reticulate::conda_install("env_audio", packages = c("librosa", "numpy", "soundfile", "numba"))
-# 
-# # 5. Indicarle a R que use este entorno específico
+ reticulate::conda_create("env_audio", python_version = "3.10")
+#
+# # # 4. Instalar las librerías necesarias en ese nuevo entorno
+#  reticulate::conda_install("env_audio", packages = c("librosa", "numpy", "soundfile", "numba"))
+# #
+# # # 5. Indicarle a R que use este entorno específico
 # use_condaenv("env_audio", required = TRUE)
-# 
-# # 6. Prueba final
-# lr <- import("librosa")
+# #
+# # # 6. Prueba final
+#  lr <- import("librosa")
 
 ```
 
@@ -45,14 +45,14 @@ pacman::p_load("dplyr")
 # library(reticulate)
 # 
 # # 1. Asegúrate de estar apuntando al entorno que creamos
-# use_condaenv("env_audio", required = TRUE)
+ use_condaenv("env_audio", required = TRUE)
 # 
 # # 2. Intenta la instalación vía PIP (esto es más robusto para librosa)
-# reticulate::conda_install(
-#   envname = "env_audio", 
-#   packages = c("librosa", "numpy", "soundfile", "numba"), 
-#   pip = TRUE
-# )
+ reticulate::conda_install(
+  envname = "env_audio", 
+   packages = c("librosa", "numpy", "soundfile", "numba"), 
+   pip = TRUE
+ )
 ```
 
 ```{r}
@@ -107,8 +107,54 @@ df <- extraer_ritmo_limpio("..\\MusicaRap\\El Jincho - Que Esta Pasando (VIDEOCL
 ```
 
 ```{r}
-df$etiqueta
+library(reticulate)
+librosa <- import("librosa")
+np <- import("numpy")
+
+calcular_tempo <- function(ruta_archivo) {
+  # Importamos librosa dentro de R
+
+
+  # 1. Cargar el audio
+  audio_data <- librosa$load(ruta_archivo)
+  y <- audio_data[[1]]
+  sr <- audio_data[[2]]
+
+  # 2. Calcular el "Onset Strength Envelope" (la curva de inicio de notas)
+  oenv <- librosa$onset$onset_strength(y=y, sr=sr)
+
+  # Esto estima el tempo predominante (un solo número)
+  tempo_estimado <- librosa$beat$tempo(onset_envelope=oenv, sr=sr)
+  print(paste("El tempo detectado es:", tempo_estimado))
+
+  return(tempo_estimado)
+}
+
+calcular_tempo("..\\MusicaRap\\El Jincho - Que Esta Pasando (VIDEOCLIP OFICIAL).mp3")
+
 ```
+```{r}
+nombres_canciones <- list.files("..\\MusicaRap")
+canciones <- list()
+
+for (i in 1:length(nombres_canciones)){
+  canciones[[i]] <- data.frame(nombre_cancion = nombres_canciones[i], tempo=calcular_tempo(paste0("..\\MusicaRap\\",nombres_canciones[i])),genero="Rap")
+
+}
+
+df_final <- do.call(rbind, canciones)
+```
+```{r}
+df_final$tempo <- round(df_final$tempo,2)
+df_final$tempolog<-round(log2(df_final$tempo),4)
+```
+
+```{r}
+View(df_final)
+```
+
+
+
 
 
 
