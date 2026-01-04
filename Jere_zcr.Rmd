@@ -20,20 +20,38 @@ pacman::p_load(tuneR, seewave, dplyr)
 
 
 ```{r}
-importar_audio <- function(path){
-w <- readWave(path)
+importar_audio <- function(path, target_fs = 22050){
+  w <- readWave(path)
 
-# Mono y Normalización
+  # Mono
+  w <- mono(w, which = "both")
 
-w <- mono(w, which = "both")
-w <- normalize(w)   # deja amplitud en [-1,1] aprox.
+  # Duración: 0 a 90 segundos
+  w <- extractWave(w, from = 0, to = 90, xunit = "time")
 
-# Duración: 0 a 90 segundos (como tu compañero)
+  # Pasamos a vector para procesar/resample
+  x  <- w@left
+  fs <- w@samp.rate
 
-w <- extractWave(w, from = 0, to = 90, xunit = "time")
+  # Quitar DC
+  x <- x - mean(x)
 
-return(w)
+  # Resample a target_fs (si hace falta)
+  if (fs != target_fs) {
+    x <- seewave::resamp(x, f = fs, g = target_fs, output = "vector")
+    fs <- target_fs
+  }
+
+  # Normalizar a [-1,1]
+  m <- max(abs(x))
+  if (m > 0) x <- x / m
+
+  # Volver a construir un objeto Wave (para que tu resto de código siga igual)
+  w <- tuneR::Wave(left = x, samp.rate = fs, bit = 16)
+
+  return(w)
 }
+
 
 
 ```
@@ -45,9 +63,6 @@ zcr_stats <- function(w, ms = 20, ovlp = 50){
 x  <- w@left
 fs <- w@samp.rate
 
-# Quitar DC (como recomienda el profe)
-
-x <- x - mean(x)
 
 wl <- as.integer((ms/1000) * fs)
 Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
@@ -76,7 +91,6 @@ graficas de zcr
 guardar_plot_zcr <- function(w, file_png, ms = 20, ovlp = 50, titulo = ""){
 x  <- w@left
 fs <- w@samp.rate
-x <- x - mean(x)
 
 wl <- as.integer((ms/1000) * fs)
 Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
