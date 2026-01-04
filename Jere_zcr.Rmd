@@ -78,15 +78,14 @@ zcr_iqr    = IQR(zvals),
 zcr_min    = min(zvals),
 zcr_max    = max(zvals),
 zcr_p10    = as.numeric(quantile(zvals, 0.10)),
-zcr_p90    = as.numeric(quantile(zvals, 0.90)),
-zcr_slope  = as.numeric(slope)
+zcr_p90    = as.numeric(quantile(zvals, 0.90))
 )
 }
 
 ```
 
 
-graficas de zcr
+
 ```{r}
 guardar_plot_zcr <- function(w, file_png, ms = 20, ovlp = 50, titulo = ""){
 x  <- w@left
