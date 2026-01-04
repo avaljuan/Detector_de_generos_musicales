@@ -1,0 +1,166 @@
+---
+title: "Funciones_Axel"
+author: "Axel Valton"
+date: "2025-12-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+pacman::p_load("tuneR")
+pacman::p_load("seewave")
+pacman::p_load("ggplot2")
+pacman::p_load("dplyr")
+```
+
+```{r}
+# # 1. Forzar la limpieza de la configuración previa
+ library(reticulate)
+ library(dplyr)
+#
+# # 2. Instalar Miniconda (esto crea un Python real y funcional para R)
+# # Di que sí (Y) a cualquier pregunta en la consola
+ reticulate::install_miniconda(force = TRUE)
+#
+# # 3. Crear un entorno específico para tu clasificador de audio
+# # Usaremos Python 3.10 porque es el que mejor se lleva con Librosa
+ reticulate::conda_create("env_audio", python_version = "3.10")
+#
+# # # 4. Instalar las librerías necesarias en ese nuevo entorno
+#  reticulate::conda_install("env_audio", packages = c("librosa", "numpy", "soundfile", "numba"))
+# #
+# # # 5. Indicarle a R que use este entorno específico
+# use_condaenv("env_audio", required = TRUE)
+# #
+# # # 6. Prueba final
+#  lr <- import("librosa")
+
+```
+
+
+```{r}
+# library(reticulate)
+# 
+# # 1. Asegúrate de estar apuntando al entorno que creamos
+ use_condaenv("env_audio", required = TRUE)
+# 
+# # 2. Intenta la instalación vía PIP (esto es más robusto para librosa)
+ reticulate::conda_install(
+  envname = "env_audio", 
+   packages = c("librosa", "numpy", "soundfile", "numba"), 
+   pip = TRUE
+ )
+```
+
+```{r}
+library(reticulate)
+library(dplyr)
+
+# Cargamos librosa
+lr <- import("librosa")
+
+extraer_ritmo_limpio <- function(ruta_archivo, etiqueta) {
+  tryCatch({
+    # 1. Cargar la canción COMPLETA
+    audio_load <- lr$load(ruta_archivo)
+    y <- audio_load[[1]]
+    sr <- audio_load[[2]]
+    
+    # 2. Calcular la fuerza de los onsets (golpes)
+    oenv <- lr$onset$onset_strength(y = y, sr = sr)
+    
+    # 3. Calcular el Tempograma
+    tgram <- lr$feature$tempogram(onset_envelope = oenv, sr = sr)
+    tgram_mean <- rowMeans(tgram)
+    
+    # --- PROCESO DE LIMPIEZA Y NORMALIZACIÓN ---
+    
+    # A. Saltamos los 2 primeros bins (el 1.0 y el 0.6)
+    # Tomamos del bin 3 al 52 para completar los 50 que querías
+    tgram_recortado <- tgram_mean[3:52]
+    
+    # B. Normalización: Dividimos todo por el valor máximo actual
+    # Esto hace que el "pico" real de la canción sea 1.0 y resalte
+    # Matemáticamente: $X_{norm} = \frac{X}{max(X)}$
+    tgram_final <- tgram_recortado / max(tgram_recortado)
+    
+    # 4. Crear el Dataframe con nombres descriptivos
+    df <- as.data.frame(t(tgram_final))
+    colnames(df) <- paste0("ritmo_puro_bin_", sprintf("%02d", 1:50))
+    
+    # Metadatos
+    df$archivo <- basename(ruta_archivo)
+    df$etiqueta <- etiqueta
+    
+    return(df)
+    
+  }, error = function(e) {
+    message(paste("Error en:", ruta_archivo))
+    return(NULL)
+  })
+}
+
+df <- extraer_ritmo_limpio("..\\MusicaRap\\El Jincho - Que Esta Pasando (VIDEOCLIP OFICIAL).mp3","Rap")
+```
+
+```{r}
+library(reticulate)
+librosa <- import("librosa")
+np <- import("numpy")
+
+calcular_tempo <- function(ruta_archivo) {
+  # Importamos librosa dentro de R
+
+
+  # 1. Cargar el audio
+  audio_data <- librosa$load(ruta_archivo)
+  y <- audio_data[[1]]
+  sr <- audio_data[[2]]
+
+  # 2. Calcular el "Onset Strength Envelope" (la curva de inicio de notas)
+  oenv <- librosa$onset$onset_strength(y=y, sr=sr)
+
+  # Esto estima el tempo predominante (un solo número)
+  tempo_estimado <- librosa$beat$tempo(onset_envelope=oenv, sr=sr)
+  print(paste("El tempo detectado es:", tempo_estimado))
+
+  return(tempo_estimado)
+}
+
+calcular_tempo("..\\MusicaRap\\El Jincho - Que Esta Pasando (VIDEOCLIP OFICIAL).mp3")
+
+```
+```{r}
+nombres_canciones <- list.files("..\\MusicaRap")
+canciones <- list()
+
+for (i in 1:length(nombres_canciones)){
+  canciones[[i]] <- data.frame(nombre_cancion = nombres_canciones[i], tempo=calcular_tempo(paste0("..\\MusicaRap\\",nombres_canciones[i])),genero="Rap")
+
+}
+
+df_final <- do.call(rbind, canciones)
+```
+```{r}
+df_final$tempo <- round(df_final$tempo,2)
+df_final$tempolog<-round(log2(df_final$tempo),4)
+```
+
+```{r}
+View(df_final)
+```
+
+
+
+
+
+
+
+
+
+
+
+

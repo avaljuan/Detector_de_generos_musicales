@@ -1,0 +1,204 @@
+---
+title: "jj"
+output: html_document
+date: "2026-01-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+rm(list = ls())
+```
+
+
+```{r}
+pacman::p_load(tuneR, seewave, dplyr, here, readr)
+
+```
+
+
+```{r}
+importar_audio <- function(path, target_fs = 22050){
+  w <- readWave(path)
+
+  # Mono
+  w <- mono(w, which = "both")
+
+  # Duración: 0 a 90 segundos
+  w <- extractWave(w, from = 0, to = 90, xunit = "time")
+
+  # Pasamos a vector para procesar/resample
+  x  <- w@left
+  fs <- w@samp.rate
+
+  # Quitar DC
+  x <- x - mean(x)
+
+  # Resample a target_fs (si hace falta)
+  if (fs != target_fs) {
+    x <- seewave::resamp(x, f = fs, g = target_fs, output = "vector")
+    fs <- target_fs
+  }
+
+  # Normalizar a [-1,1]
+  m <- max(abs(x))
+  if (m > 0) x <- x / m
+
+  # Volver a construir un objeto Wave (para que tu resto de código siga igual)
+  w <- tuneR::Wave(left = x, samp.rate = fs, bit = 32, pcm = FALSE)
+
+  return(w)
+}
+
+
+
+```
+
+
+CALCULO DE ZCR Y DEMAS ESTADIITICAS IMPORTANTES PARA EL ML
+```{r}
+zcr_stats <- function(w, ms = 20, ovlp = 50){
+x  <- w@left
+fs <- w@samp.rate
+
+
+wl <- as.integer((ms/1000) * fs)
+Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+zvals <- Z[, "zcr"]
+
+slope <- coef(lm(zvals ~ seq_along(zvals)))[2]
+
+data.frame(
+ZCR_mean   = mean(zvals),
+ZCR_sd     = sd(zvals)
+)
+}
+
+```
+
+
+
+```{r}
+guardar_plot_zcr <- function(w, file_png, ms = 20, ovlp = 50, titulo = ""){
+x  <- w@left
+fs <- w@samp.rate
+
+wl <- as.integer((ms/1000) * fs)
+Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+zvals <- Z[, "zcr"]
+
+png(file_png, width = 1200, height = 650)
+plot(zvals, type = "l", main = titulo, xlab = "Frames", ylab = "ZCR")
+abline(h = mean(zvals), lty = 2)
+dev.off()
+}
+
+```
+
+
+
+guardar los datis
+```{r}
+# WAVs aquí
+wav_dir  <- here::here("data", "cancionwav")
+
+# Outputs aquí
+plot_dir <- here::here("outputs", "plots_zcr")
+dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+names_files <- list.files(path = wav_dir, pattern = "\\.wav$", ignore.case = TRUE)
+paths <- file.path(wav_dir, names_files)
+
+songs_list <- list()
+
+for(path in paths) {
+songs_list <- append(songs_list, list(importar_audio(path = path)))
+}
+
+```
+
+
+ENERGIA
+```{r}
+# ENERGÍA MEDIA 
+AVG_Energy <- c()
+
+for (song in songs_list) {
+  x <- song@left  # ya preprocesada 
+  acv <- acf(x, plot = FALSE, type = "covariance", lag.max = 0)
+  AVG_Energy <- c(AVG_Energy, as.numeric(acv$acf[1]))
+}
+
+length(AVG_Energy)  
+head(AVG_Energy)
+
+```
+
+
+graficas
+```{r}
+features_all <- data.frame()
+
+for(i in seq_along(songs_list)) {
+song <- songs_list[[i]]
+fname <- names_files[i]
+
+feats <- zcr_stats(song, ms = 20, ovlp = 50)
+
+# plot (para memoria)
+
+png_path <- file.path(plot_dir, paste0(tools::file_path_sans_ext(fname), "_zcr.png"))
+guardar_plot_zcr(song, png_path, ms = 20, ovlp = 50, titulo = paste("ZCR -", fname))
+
+row <- data.frame(
+file = fname,
+fs = song@samp.rate,
+feats,
+row.names = NULL,
+check.names = FALSE
+)
+
+features_all <- rbind(features_all, row)
+}
+
+head(features_all)
+nrow(features_all)
+
+# Añadir energía al dataframe final 
+features_all$AVG_Energy <- AVG_Energy
+
+# mover avg_energy tras fs
+features_all <- features_all %>% relocate(AVG_Energy, .after = "fs")
+
+head(features_all)
+```
+
+
+etiqueta
+```{r}
+features_all <- features_all %>%
+  mutate(genero = "Opera") %>%      # crea la columna
+  relocate(genero, .before = 1)     # la pone la primera
+
+
+
+```
+
+```{r}
+out_csv <- here::here("outputs", "zcr_features.csv")
+write.csv(features_all, out_csv, row.names = FALSE)
+
+file.exists(out_csv)
+out_csv
+
+
+
+```
+```{r}
+zcr_features <- readr::read_csv(out_csv)
+View(zcr_features)
+
+```
+

@@ -1,0 +1,79 @@
+---
+title: "Funcion_Normalizar"
+author: "Carlos"
+date: "2025-12-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tuneR)
+library(av)
+
+normalizar_audios_mp3 <- function(lista_archivos, carpeta_salida = "mp3_normalizados") {
+  
+  # Crear carpeta de salida
+  if (!dir.exists(carpeta_salida)) dir.create(carpeta_salida)
+  
+  for (archivo in lista_archivos) {
+    
+    # Comprobación de seguridad
+    if (!file.exists(archivo)) {
+      warning(paste("No encontrado:", archivo))
+      next
+    }
+    
+    tryCatch({
+      message(paste("Procesando:", basename(archivo), "..."))
+      
+      # Leer el MP3 original
+      onda <- readMP3(archivo)
+      
+      # Normalizar (Escalar entre -1 y 1)
+      # pcm = FALSE asegura que usemos valores flotantes para la precisión
+      onda_norm <- normalize(onda, unit = "1", pcm = FALSE)
+      
+      # Guardar un WAV temporal (paso intermedio necesario)
+      archivo_temporal <- file.path(tempdir(), "temp_audio.wav")
+      
+      # Convertimos a entero de 16 bits para asegurar compatibilidad al escribir
+      # (La mayoría de MP3s provienen de fuentes de 16 bits)
+      onda_norm_pcm <- normalize(onda_norm, unit = "16", pcm = TRUE)
+      writeWave(onda_norm_pcm, filename = archivo_temporal)
+      
+      # Convertir ese WAV a MP3 usando el paquete 'av'
+      nombre_salida <- file.path(carpeta_salida, basename(archivo))
+      
+      # Convertimos el wav temporal al mp3 final
+      av_audio_convert(archivo_temporal, nombre_salida, verbose = FALSE)
+      
+      # Limpieza
+      file.remove(archivo_temporal)
+      
+      message(paste("--> OK. Guardado en:", nombre_salida))
+      
+    }, error = function(e) {
+      message(paste("ERROR en", basename(archivo), ":", e$message))
+    })
+  }
+  message("--- Proceso finalizado ---")
+}
+```
+
+```{r}
+mis_archivos <- list.files(
+  path = "./canciones",  # La carpeta donde están los audios
+  pattern = "\\.mp3$",                # Expresión regular: solo archivos que terminan en .mp3
+  full.names = TRUE,                  # IMPORTANTE: Devuelve la ruta completa ("carpeta/audio.mp3")
+  ignore.case = TRUE                  # Para que detecte .mp3 y .MP3
+)
+
+# Ver el resultado
+print(mis_archivos)
+
+normalizar_audios_mp3(mis_archivos)
+```
+
