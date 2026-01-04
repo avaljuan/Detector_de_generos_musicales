@@ -14,7 +14,7 @@ rm(list = ls())
 
 
 ```{r}
-pacman::p_load(tuneR, seewave, dplyr)
+pacman::p_load(tuneR, seewave, dplyr, here, readr)
 
 ```
 
@@ -47,7 +47,7 @@ importar_audio <- function(path, target_fs = 22050){
   if (m > 0) x <- x / m
 
   # Volver a construir un objeto Wave (para que tu resto de código siga igual)
-  w <- tuneR::Wave(left = x, samp.rate = fs, bit = 16)
+  w <- tuneR::Wave(left = x, samp.rate = fs, bit = 32, pcm = FALSE)
 
   return(w)
 }
@@ -71,14 +71,8 @@ zvals <- Z[, "zcr"]
 slope <- coef(lm(zvals ~ seq_along(zvals)))[2]
 
 data.frame(
-zcr_mean   = mean(zvals),
-zcr_sd     = sd(zvals),
-zcr_median = median(zvals),
-zcr_iqr    = IQR(zvals),
-zcr_min    = min(zvals),
-zcr_max    = max(zvals),
-zcr_p10    = as.numeric(quantile(zvals, 0.10)),
-zcr_p90    = as.numeric(quantile(zvals, 0.90))
+ZCR_mean   = mean(zvals),
+ZCR_sd     = sd(zvals)
 )
 }
 
@@ -103,10 +97,15 @@ dev.off()
 
 ```
 
+
+
 guardar los datis
 ```{r}
-wav_dir <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/cancionwav"
-plot_dir <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/plots_zcr"
+# WAVs aquí
+wav_dir  <- here::here("data", "cancionwav")
+
+# Outputs aquí
+plot_dir <- here::here("outputs", "plots_zcr")
 dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
 
 names_files <- list.files(path = wav_dir, pattern = "\\.wav$", ignore.case = TRUE)
@@ -124,16 +123,16 @@ songs_list <- append(songs_list, list(importar_audio(path = path)))
 ENERGIA
 ```{r}
 # ENERGÍA MEDIA 
-avg_energy <- c()
+AVG_Energy <- c()
 
 for (song in songs_list) {
   x <- song@left  # ya preprocesada 
   acv <- acf(x, plot = FALSE, type = "covariance", lag.max = 0)
-  avg_energy <- c(avg_energy, as.numeric(acv$acf[1]))
+  AVG_Energy <- c(AVG_Energy, as.numeric(acv$acf[1]))
 }
 
-length(avg_energy)  
-head(avg_energy)
+length(AVG_Energy)  
+head(AVG_Energy)
 
 ```
 
@@ -168,10 +167,10 @@ head(features_all)
 nrow(features_all)
 
 # Añadir energía al dataframe final 
-features_all$avg_energy <- avg_energy
+features_all$AVG_Energy <- AVG_Energy
 
 # mover avg_energy tras fs
-features_all <- features_all %>% relocate(avg_energy, .after = fs)
+features_all <- features_all %>% relocate(AVG_Energy, .after = "fs")
 
 head(features_all)
 ```
@@ -179,22 +178,27 @@ head(features_all)
 
 etiqueta
 ```{r}
-features_all <- features_all %>% mutate(label = "Opera")
+features_all <- features_all %>%
+  mutate(genero = "Opera") %>%      # crea la columna
+  relocate(genero, .before = 1)     # la pone la primera
+
+
 
 ```
 
 ```{r}
-out_csv <- "C:/Users/Admin/Documents/MASTER/An Señales/proyecto grupo/zcr_features.csv"
+out_csv <- here::here("outputs", "zcr_features.csv")
 write.csv(features_all, out_csv, row.names = FALSE)
 
 file.exists(out_csv)
 out_csv
 
 
+
 ```
 ```{r}
-library(readr)
-zcr_features <- read_csv("~/MASTER/An Señales/proyecto grupo/zcr_features.csv")
+zcr_features <- readr::read_csv(out_csv)
 View(zcr_features)
+
 ```
 
