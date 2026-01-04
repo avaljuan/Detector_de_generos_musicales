@@ -122,7 +122,24 @@ songs_list <- append(songs_list, list(importar_audio(path = path)))
 ```
 
 
+ENERGIA
+```{r}
+# ENERGÍA MEDIA 
+avg_energy <- c()
 
+for (song in songs_list) {
+  x <- song@left  # ya preprocesada 
+  acv <- acf(x, plot = FALSE, type = "covariance", lag.max = 0)
+  avg_energy <- c(avg_energy, as.numeric(acv$acf[1]))
+}
+
+length(avg_energy)  
+head(avg_energy)
+
+```
+
+
+graficas
 ```{r}
 features_all <- data.frame()
 
@@ -140,7 +157,6 @@ guardar_plot_zcr(song, png_path, ms = 20, ovlp = 50, titulo = paste("ZCR -", fna
 row <- data.frame(
 file = fname,
 fs = song@samp.rate,
-plot_path = png_path,
 feats,
 row.names = NULL,
 check.names = FALSE
@@ -152,6 +168,13 @@ features_all <- rbind(features_all, row)
 head(features_all)
 nrow(features_all)
 
+# Añadir energía al dataframe final 
+features_all$avg_energy <- avg_energy
+
+# mover avg_energy tras fs
+features_all <- features_all %>% relocate(avg_energy, .after = fs)
+
+head(features_all)
 ```
 
 
