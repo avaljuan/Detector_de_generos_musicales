@@ -9,8 +9,8 @@ rm(list = ls())
 ## Adaptar
 
 genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
-carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-
+#carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
+carpeta <- "../MusicaRap/"
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -160,11 +160,11 @@ extraer_espectrales <- function(audio){
   
   return(
     c(
-    cent*1000,
-    bw*1000,
-    rolloff_85*1000,
-    ber
-    #E_low / E_high
+      cent*1000,
+      bw*1000,
+      rolloff_85*1000,
+      ber
+      #E_low / E_high
     )
   )
 }
@@ -183,6 +183,7 @@ for(path in paths) {
 }
 
 ## Sacamos características
+
 song_names <- c()
 avg_energy <- c() #Energía media
 sd_energy  <- c()
@@ -205,11 +206,9 @@ BER_treble   <- c()
 
 
 for (i in 1:length(songs_list)) {
-  
   sound      <- songs_list[[i]]@left
   
   acv        <- acf(sound, plot = FALSE, type = "covariance", lag.max = 0)
-  
   
   song_names <- c(song_names,names_files[i])
   avg_energy <- c(avg_energy,as.numeric(acv$acf[1]))
@@ -221,11 +220,11 @@ for (i in 1:length(songs_list)) {
   
   aux                 <- extraer_espectrales(songs_list[[i]])
   centroid      <- c(centroid,
-                           aux[1]) 
+                     aux[1]) 
   bandwidth     <- c(bandwidth,
-                           aux[2]) 
+                     aux[2]) 
   rolloff       <- c(rolloff,
-                           aux[3]) 
+                     aux[3]) 
   
   #ratio_graves_agudos <- c(ratio_graves_agudos, aux[4])
   
@@ -271,13 +270,14 @@ features <- data.frame(Song_Name= song_names,
                        BER_mid      = BER_mid,
                        BER_high_mid = BER_high_mid,
                        BER_treble   = BER_treble
-                      )
+)
 
 
 # Añadimos nuestro género
 
 features <- features %>% mutate(Genero = genero)
 
+
 # Exportamos
 
-write.csv(features, "features_rap.csv", row.names = FALSE)
+write.csv(features, "features_prueba.csv", row.names = FALSE)
