@@ -8,13 +8,22 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+#Obtenemos los nombres de los archivos de features
+```{r}
+features <- list.files(path=".")[grepl(pattern="features.*",x=list.files(path="."))]
+```
+
+#Cargamos y creamos el dataframe
 
 ```{r}
 library(readr)
-features_rap <- read_csv("features_rap.csv")
-features_opera <- read_csv("features_opera.csv")
+features_music <- NULL
+for (nombre in features){
+  features_genero <-  read_csv(nombre)
+  features_music <- rbind(features_music, features_genero)
+}
 
-features_music <- rbind(features_rap,features_opera)
+
 View(features_music)
 ```
 #Convertimos a factor la columna Genero

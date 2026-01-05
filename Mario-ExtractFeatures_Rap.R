@@ -8,9 +8,9 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Country" #pon aqui el genere que te ha tocado, primera en mayus
-#carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-carpeta <- "../music/"
+genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
+carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
+
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -183,7 +183,7 @@ for(path in paths) {
 }
 
 ## Sacamos características
-
+song_names <- c()
 avg_energy <- c() #Energía media
 sd_energy  <- c()
 
@@ -204,19 +204,22 @@ BER_high_mid <- c()
 BER_treble   <- c()
 
 
-for (song in songs_list) {
-  sound      <- song@left
+for (i in 1:length(songs_list)) {
+  
+  sound      <- songs_list[[i]]@left
   
   acv        <- acf(sound, plot = FALSE, type = "covariance", lag.max = 0)
   
+  
+  song_names <- c(song_names,names_files[i])
   avg_energy <- c(avg_energy,as.numeric(acv$acf[1]))
   sd_energy  <- c(sd_energy,sd(sound^2))
   
-  aux        <- zcr_stats(song, ms = 20, ovlp = 50)
+  aux        <- zcr_stats(songs_list[[i]], ms = 20, ovlp = 50)
   ZCR_mean   <- c(ZCR_mean, aux[1])
   ZCR_sd     <- c(ZCR_sd,   aux[2])
   
-  aux                 <- extraer_espectrales(song)
+  aux                 <- extraer_espectrales(songs_list[[i]])
   centroid      <- c(centroid,
                            aux[1]) 
   bandwidth     <- c(bandwidth,
@@ -254,7 +257,8 @@ for (i in seq_along(songs_list)) {
 
 rm(list = c('acv','aux')) #quitamos esto de la memoria que ya no nos sirve
 
-features <- data.frame(AVG_Energy = avg_energy,
+features <- data.frame(Song_Name= song_names,
+                      AVG_Energy = avg_energy,
                        SD_Energy  = sd_energy,
                        ZCR_mean = ZCR_mean,
                        ZCR_sd   = ZCR_sd,
@@ -276,4 +280,4 @@ features <- features %>% mutate(Genero = genero)
 
 # Exportamos
 
-write.csv(features, "features_country.csv", row.names = FALSE)
+write.csv(features, "features_rap.csv", row.names = FALSE)
