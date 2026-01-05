@@ -1,0 +1,66 @@
+---
+title: "Clasificador_generos"
+author: "Axel Valton"
+date: "2026-01-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+features_reggae <- read_csv("features_reggae.csv")
+View(features_reggae)
+```
+#Convertimos a factor la columna Genero
+```{r}
+features_reggae$Genero <- as.factor(features_reggae$Genero)
+```
+
+#Creamos la partición en train-test
+
+```{r}
+library(caret)
+pacman::p_load(randomForest)
+set.seed(123) # Para que los resultados sean reproducibles
+
+# Creamos los índices para el 70% de entrenamiento
+trainIndex <- createDataPartition(features_reggae$Genero, p = 0.7, list = FALSE)
+
+train_data <- features_reggae[trainIndex, ]
+test_data  <- features_reggae[-trainIndex, ]
+```
+
+# Entrenamos con balanceo de clases
+
+```{r}
+# Buscamos cuántas muestras tiene el género con menos canciones
+n_min <- min(table(train_data$Genero))
+
+# Entrenar el Random Forest con Balanceo
+rf_model <- randomForest(
+  Genero ~ ., 
+  data = train_data, 
+  ntree = 500,           # Número de árboles
+  importance = TRUE,     # Para ver qué variables son más importantes
+  sampsize = rep(n_min, length(levels(train_data$Genero))), # BALANCEO AQUÍ
+  strata = train_data$Genero
+)
+
+print(rf_model)
+```
+#Predecimos y generamos la matriz de confusión
+```{r}
+# Predecir en el set de prueba
+predicciones <- predict(rf_model, test_data)
+
+# Matriz de Confusión (ver aciertos y errores)
+mc <- confusionMatrix(predicciones, test_data$genero)
+print(mc)
+```
+
+
+
+
