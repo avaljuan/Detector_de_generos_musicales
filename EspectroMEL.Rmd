@@ -1,0 +1,108 @@
+---
+title: "Espectrograma"
+author: "Carlos"
+date: "2026-01-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# --- INSTALACIÓN DE PAQUETES ---
+# install.packages("tuneR")
+# install.packages("dplyr")
+
+library(tuneR)
+library(dplyr)
+
+# --- CONFIGURACIÓN ---
+DIRECTORIO_ARCHIVOS <- "./canciones" # <--- Cambia esto a tu carpeta
+GENERO_LABEL <- "Jazz"
+FS_OBJETIVO <- 22050
+
+extraer_caracteristicas_final <- function(carpeta) {
+  
+  archivos <- list.files(path = carpeta, pattern = "\\.wav$", full.names = TRUE)
+  resultados_lista <- list()
+  
+  for (ruta_completa in archivos) {
+    nombre_archivo <- basename(ruta_completa)
+    
+    tryCatch({
+      # Cargar audio
+      
+        audio <- readWave(ruta_completa)
+      
+      
+      # Convertir a Mono (necesario para melfcc)
+      if (audio@stereo) {
+        audio <- mono(audio, which = "both")
+      }
+      
+      # Resampling si es necesario
+      if (audio@samp.rate != FS_OBJETIVO) {
+         if (audio@samp.rate > FS_OBJETIVO) {
+            audio <- downsample(audio, FS_OBJETIVO)
+         } else {
+            warning(paste("El archivo", nombre_archivo, "tiene fs menor a 22050 Hz."))
+         }
+      }
+      # Normalizar Valores 
+      audio <- normalize(audio, unit = "1")
+
+      # 3. Calcular usando melfcc
+      # Asignamos el resultado a 'mel_spect_db' para usar tu bloque de código
+      # numcep = 13 es estándar. nbands controla las bandas Mel.
+      mel_spect_db <- melfcc(audio, 
+                             sr = FS_OBJETIVO, 
+                             numcep = 13, 
+                             wintime = 0.025, 
+                             hoptime = 0.010)
+      
+      # --- TU BLOQUE DE CÓDIGO INTEGRADO ---
+      
+      #  Calcular Mean y SD
+      mel_mean <- mean(mel_spect_db,na.rm = TRUE)
+      mel_sd <- sd(mel_spect_db,na.rm = TRUE)
+      
+      # Guardar datos
+      resultados_lista[[length(resultados_lista) + 1]] <- data.frame(
+        genero = GENERO_LABEL,
+        file = nombre_archivo,
+        fs = FS_OBJETIVO,
+        MEL_mean = mel_mean,
+        MEL_sd = mel_sd,
+        stringsAsFactors = FALSE
+      )
+      
+      # -------------------------------------
+      
+    }, error = function(e) {
+      message(paste("Error en archivo:", nombre_archivo, "-", e$message))
+    })
+  }
+  
+  # Combinar todo en un DataFrame final
+  if (length(resultados_lista) > 0) {
+    df_final <- do.call(rbind, resultados_lista)
+    return(df_final)
+  } else {
+    return(data.frame())
+  }
+}
+
+# --- EJECUCIÓN ---
+df_jazz <- extraer_caracteristicas_final(DIRECTORIO_ARCHIVOS)
+
+# Ver los primeros resultados
+print(head(df_jazz))
+
+# Guardar en CSV
+write.csv(df_jazz, "features_jazz_melfcc.csv", row.names = FALSE)
+```
+
+
+
+
