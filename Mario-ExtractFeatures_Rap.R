@@ -8,9 +8,9 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
-carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-
+genero <- "Country" #pon aqui el genere que te ha tocado, primera en mayus
+#carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
+carpeta <- "../music/"
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -195,7 +195,14 @@ bandwidth      <- c() #  desviacion estandar centroide
 
 rolloff        <- c() # Frecu por debajo de la cual está el 85% de la energía
 
-ratio_graves_agudos <- c() # BER
+#ratio_graves_agudos <- c() # BER
+BER_subbass  <- c()
+BER_bass     <- c()
+BER_low_mid  <- c()
+BER_mid      <- c()
+BER_high_mid <- c()
+BER_treble   <- c()
+
 
 for (song in songs_list) {
   sound      <- song@left
@@ -217,9 +224,16 @@ for (song in songs_list) {
   rolloff       <- c(rolloff,
                            aux[3]) 
   
-  ratio_graves_agudos <- c(ratio_graves_agudos,
-                           aux[4])
+  #ratio_graves_agudos <- c(ratio_graves_agudos, aux[4])
   
+  ber_vals <- aux[4:9]
+  
+  BER_subbass  <- c(BER_subbass,  ber_vals[1])
+  BER_bass     <- c(BER_bass,     ber_vals[2])
+  BER_low_mid  <- c(BER_low_mid,  ber_vals[3])
+  BER_mid      <- c(BER_mid,      ber_vals[4])
+  BER_high_mid <- c(BER_high_mid, ber_vals[5])
+  BER_treble   <- c(BER_treble,   ber_vals[6])
 }
 
 # Guardar plots ZCR
@@ -240,7 +254,6 @@ for (i in seq_along(songs_list)) {
 
 rm(list = c('acv','aux')) #quitamos esto de la memoria que ya no nos sirve
 
-
 features <- data.frame(AVG_Energy = avg_energy,
                        SD_Energy  = sd_energy,
                        ZCR_mean = ZCR_mean,
@@ -248,7 +261,12 @@ features <- data.frame(AVG_Energy = avg_energy,
                        Centroid = centroid,
                        BW       = bandwidth,
                        RollOff  = rolloff,
-                       Ratio_Frec = ratio_graves_agudos 
+                       BER_subbass  = BER_subbass,
+                       BER_bass     = BER_bass,
+                       BER_low_mid  = BER_low_mid,
+                       BER_mid      = BER_mid,
+                       BER_high_mid = BER_high_mid,
+                       BER_treble   = BER_treble
                       )
 
 
@@ -258,4 +276,4 @@ features <- features %>% mutate(Genero = genero)
 
 # Exportamos
 
-write.csv(features, "features_reggae.csv", row.names = FALSE)
+write.csv(features, "features_country.csv", row.names = FALSE)
