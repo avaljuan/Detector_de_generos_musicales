@@ -8,8 +8,8 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Reggae" #pon aqui el genere que te ha tocado, primera en mayus
-carpeta <- "reggae/" #pon aqui el nombre de la carpeta que contiene los archivos
+genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
+carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
 
 ## Declaramos funciones
 
@@ -21,7 +21,7 @@ importar_audio_normalizado <- function(path) {
   w <- tuneR::mono(w, which = "both")
   
   # 3. Recortar (30 a 120 segundos)
-  w <- tuneR::extractWave(w, from = 30, to = 120, xunit = "time")
+  w <- tuneR::extractWave(w, from = 0, to = 90, xunit = "time")
   
   # 4. Extraer vector para procesar
   x  <- w@left
