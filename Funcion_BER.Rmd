@@ -1,0 +1,138 @@
+---
+title: "metrica_BER"
+author: "Cristhian Torrico Castellón"
+date: "2026-01-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+BER
+Band Energy Ratio
+La proporción de energía que hay en una banda de frecuencias concreta respecto a la energía total (o respecto a otra banda).
+
+La escala Bark es una escala psicoacústica: Representa cómo el oído humano percibe el sonido (~20–20.000 Hz) en 24 bandas Bark
+
+```{r}
+library(seewave)
+
+# Conversión Hz -> Bark
+hz2bark <- function(f) {
+  13 * atan(0.00076 * f) + 3.5 * atan((f / 7500)^2)
+}
+```
+
+
+Dividimos las bandas Berk en 6 macro-bandas musicales:
+subbass (1–3 Bark) ≈ 20–60 Hz (Bombo muy grave, subwoofer)
+
+bass (4–6 Bark) ≈ 60–250 Hz (Fundamental del bombo y bajo eléctrico)
+
+low_mid (7–10 Bark) ≈ 250–500 Hz (Cuerpo de voces e instrumentos)
+
+mid (11–14 Bark) ≈ 500–2.000 Hz (Claridad de la voz, Melodía principal)
+
+high_mid (15–18 Bark) ≈ 2.000–6.000 Hz (Ataque, Consonantes en la voz)
+
+treble (19–24 Bark) ≈ 6.000–20.000 Hz (Brillo, Aire, Platillos, ruido fino)
+
+
+```{r}
+metrica_BER <- function(signal, fs, wl = 1024, ovlp = 75) {
+  
+  spec <- spectro(
+    signal,
+    f = fs,
+    wl = wl,
+    ovlp = ovlp,
+    plot = FALSE,
+    norm = FALSE,
+    dB = NULL
+  )
+  
+  power_spec <- spec$amp^2
+  
+  # Frecuencias reales (Hz)
+  freqs <- seq(0, fs/2, length.out = nrow(power_spec))
+  bark_freq <- hz2bark(freqs)
+  
+  bark_ranges <- list(
+    subbass  = c(1, 3),
+    bass     = c(4, 6),
+    low_mid  = c(7, 10),
+    mid      = c(11, 14),
+    high_mid = c(15, 18),
+    treble   = c(19, 24)
+  )
+  
+  total_energy <- sum(power_spec)
+  
+  BER <- numeric(length(bark_ranges))
+  names(BER) <- names(bark_ranges)
+  
+  for (i in seq_along(bark_ranges)) {
+    idx <- which(
+      bark_freq >= bark_ranges[[i]][1] &
+      bark_freq <= bark_ranges[[i]][2]
+    )
+    
+    if (length(idx) > 0) {
+      BER[i] <- sum(power_spec[idx, ]) / total_energy
+    }
+  }
+  
+  return(BER)
+}
+```
+
+prueba
+```{r}
+library(tuneR)
+
+audio <- readWave("prueba/music.wav")
+x <- audio@left
+fs <- audio@samp.rate
+
+ber_features <- metrica_BER(x, fs)
+print(ber_features)
+
+
+```
+
+
+```{r}
+
+# Carpeta con los WAV
+audio_dir <- "music"
+
+# Listar archivos WAV
+files <- list.files(audio_dir, pattern = "\\.wav$", full.names = TRUE)
+
+# Inicializar lista para resultados
+results <- list()
+
+for (file in files) {
+  
+  audio <- readWave(file)
+  signal <- audio@left
+  fs <- audio@samp.rate
+  
+  ber_values <- metrica_BER(signal, fs)
+  
+  # Crear fila
+  results[[file]] <- data.frame(
+    archivo = basename(file),
+    t(ber_values)
+  )
+}
+
+# Unir todo en un solo dataframe
+ber_df <- do.call(rbind, results)
+
+# Ver resultado
+print(ber_df)
+
+
+```
