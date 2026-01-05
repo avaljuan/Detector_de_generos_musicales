@@ -11,12 +11,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(readr)
-features_reggae <- read_csv("features_reggae.csv")
-View(features_reggae)
+features_rap <- read_csv("features_rap.csv")
+features_opera <- read_csv("features_opera.csv")
+
+features_music <- rbind(features_rap,features_opera)
+View(features_music)
 ```
 #Convertimos a factor la columna Genero
 ```{r}
-features_reggae$Genero <- as.factor(features_reggae$Genero)
+features_music$Genero <- as.factor(features_music$Genero)
 ```
 
 #Creamos la partición en train-test
@@ -27,10 +30,10 @@ pacman::p_load(randomForest)
 set.seed(123) # Para que los resultados sean reproducibles
 
 # Creamos los índices para el 70% de entrenamiento
-trainIndex <- createDataPartition(features_reggae$Genero, p = 0.7, list = FALSE)
+trainIndex <- createDataPartition(features_music$Genero, p = 0.7, list = FALSE)
 
-train_data <- features_reggae[trainIndex, ]
-test_data  <- features_reggae[-trainIndex, ]
+train_data <- features_music[trainIndex, ]
+test_data  <- features_music[-trainIndex, ]
 ```
 
 # Entrenamos con balanceo de clases
@@ -57,7 +60,7 @@ print(rf_model)
 predicciones <- predict(rf_model, test_data)
 
 # Matriz de Confusión (ver aciertos y errores)
-mc <- confusionMatrix(predicciones, test_data$genero)
+mc <- confusionMatrix(predicciones, test_data$Genero)
 print(mc)
 ```
 
