@@ -85,6 +85,28 @@ zcr_stats <- function(w, ms = 20, ovlp = 50){
 }
 ```
 
+```{r}
+# Plots ZCR 
+plot_dir <- here::here("outputs", "plots_zcr")
+dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
+
+guardar_plot_zcr <- function(w, file_png, ms = 20, ovlp = 50, titulo = "") {
+  x  <- w@left
+  fs <- w@samp.rate
+
+  wl <- as.integer((ms/1000) * fs)
+  Z  <- seewave::zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+  zvals <- Z[, "zcr"]
+
+  png(file_png, width = 1200, height = 650)
+  plot(zvals, type = "l", main = titulo, xlab = "Frames", ylab = "ZCR")
+  abline(h = mean(zvals), lty = 2)
+  dev.off()
+}
+
+```
+
+
 
 ```{r}
 # Espectrales
@@ -189,6 +211,27 @@ for (song in songs_list) {
 
 
 ```
+
+
+```{r}
+# Guardar plots ZCR
+for (i in seq_along(songs_list)) {
+  song  <- songs_list[[i]]
+  fname <- names_files[i]
+
+  png_path <- file.path(plot_dir, paste0(tools::file_path_sans_ext(fname), "_zcr.png"))
+
+  guardar_plot_zcr(
+    song,
+    png_path,
+    ms = 20,
+    ovlp = 50,
+    titulo = paste("ZCR -", fname)
+  )
+}
+```
+
+
 
 ```{r}
 rm(list = c('acv','aux')) #quitamos esto de la memoria que ya no nos sirve
