@@ -61,6 +61,57 @@ zcr_stats <- function(w, ms = 20, ovlp = 50){
   return(c(mean(zvals), sd(zvals)))
 }
 
+#BER
+# Conversión Hz -> Bark
+hz2bark <- function(f) {
+  13 * atan(0.00076 * f) + 3.5 * atan((f / 7500)^2)
+}
+metrica_BER <- function(signal, fs, wl = 1024, ovlp = 75) {
+  
+  spec <- spectro(
+    signal,
+    f = fs,
+    wl = wl,
+    ovlp = ovlp,
+    plot = FALSE,
+    norm = FALSE,
+    dB = NULL
+  )
+  
+  power_spec <- spec$amp^2
+  
+  # Frecuencias reales (Hz)
+  freqs <- seq(0, fs/2, length.out = nrow(power_spec))
+  bark_freq <- hz2bark(freqs)
+  
+  bark_ranges <- list(
+    subbass  = c(1, 3),
+    bass     = c(4, 6),
+    low_mid  = c(7, 10),
+    mid      = c(11, 14),
+    high_mid = c(15, 18),
+    treble   = c(19, 24)
+  )
+  
+  total_energy <- sum(power_spec)
+  
+  BER <- numeric(length(bark_ranges))
+  names(BER) <- names(bark_ranges)
+  
+  for (i in seq_along(bark_ranges)) {
+    idx <- which(
+      bark_freq >= bark_ranges[[i]][1] &
+        bark_freq <= bark_ranges[[i]][2]
+    )
+    
+    if (length(idx) > 0) {
+      BER[i] <- sum(power_spec[idx, ]) / total_energy
+    }
+  }
+  
+  return(BER)
+}
+
 # Plots ZCR 
 plot_dir <- here::here("outputs", "plots_zcr")
 dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
@@ -101,10 +152,10 @@ extraer_espectrales <- function(audio){
   idx     <- which(cumP >= 0.85 )[1]
   rolloff_85 <- freq[idx]
   
-  E_low  <- sum(amp[freq <= 0.250]^2)
-  E_high <- sum(amp[freq > 4.0 & freq <= 20.000]^2)
-  
-  
+  # E_low  <- sum(amp[freq <= 0.250]^2)
+  # E_high <- sum(amp[freq > 4.0 & freq <= 20.000]^2)
+  x <- audio@left
+  ber <- metrica_BER(x, fs)
   
   
   return(
@@ -112,7 +163,8 @@ extraer_espectrales <- function(audio){
     cent*1000,
     bw*1000,
     rolloff_85*1000,
-    E_low / E_high
+    ber
+    #E_low / E_high
     )
   )
 }
