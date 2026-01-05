@@ -269,10 +269,14 @@ features <- data.frame(AVG_Energy = avg_energy,
                        BER_treble   = BER_treble
                       )
 
+#Añadimos el nombre de la musica
+
+features <- features %>% mutate(Cancion = names_files)
 
 # Añadimos nuestro género
 
 features <- features %>% mutate(Genero = genero)
+
 
 # Exportamos
 
