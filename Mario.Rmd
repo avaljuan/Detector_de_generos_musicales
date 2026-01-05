@@ -16,10 +16,10 @@ Primero cargo el paquete `tuneR` para poder importar los archivos MP3 como objet
 Me voy a encargar de que mis canciones estén normalizadas, que sean monocanal y que duren 1:30.
 
 ```{r}
-pacman::p_load(tuneR)
+pacman::p_load(tuneR,seewave)
 
 
-audio <- readMP3("reggae/Alborosie - Come My Way ｜ Official Music Video [fisbNNnKURY].mp3")
+audio <- readWave("reggae/Alborosie - Come My Way ｜ Official Music Video [fisbNNnKURY].wav")
 
 # Mono  y Norm
 
@@ -60,6 +60,36 @@ Las dos maneras sirven así que eligo la más cómoda que es usar la función ya
 
 Vamos a crear ahora un chunk que lea las canciones, calcule sus energías medías, y lo vaya guardando en un dataframe.
 
+# Extraer datos espectrales
+
+```{r}
+spec <- meanspec(
+  audio,
+  f = audio@samp.rate,
+  wl = 1024,
+  ovlp = 50,
+  plot = T
+)
+
+freq <- spec[,1]
+amp  <- spec[,2]
+
+E_low  <- sum(amp[freq <= 0.250]^2)
+E_high <- sum(amp[freq > 4.0 & freq <= 20.000]^2)
+
+
+E_low / E_high
+
+fs <- audio@left
+props <- specprop(spec, f = spec[2,1], plot = T)
+  
+  cent  <- props$mean
+  bw    <- props$sd
+  
+```
+
+
+
 # Programa en sí
 
 ### Limpiamos
@@ -81,7 +111,7 @@ pacman::p_load(tuneR,dplyr,tidyverse,tidyr)
 ```{r}
 importar_audio <- function(path){
   require(tuneR)
-  w <- readMP3(path)
+  w <- readWave(path)
 
   # Mono  y Norm
   
