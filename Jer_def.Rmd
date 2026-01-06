@@ -114,7 +114,7 @@ añadir_features <- function(ruta_csv, carpeta){
   
   for (i in 1:length(nombres_canciones)) {
     
-    ruta_completa <- paste0("..\\MusicaRap\\", nombres_canciones[i])
+    ruta_completa <- paste0(carpeta, "/", nombres_canciones[i])
     
     # A. Extraemos Ritmo (BPM y Pulso)
     res_ritmo <- calcular_ritmo_avanzado(ruta_completa)
@@ -127,7 +127,7 @@ añadir_features <- function(ruta_csv, carpeta){
       Song_Name = nombres_canciones[i], 
       tempo          = res_ritmo$bpm,
       Fuerza_Pulso   = res_ritmo$pulse_strength,
-      Genero         = "Rap",
+      Genero         = "Opera",
       stringsAsFactors = FALSE
     )
     
@@ -143,15 +143,13 @@ añadir_features <- function(ruta_csv, carpeta){
   
   # --- 3. Unir todo en el dataframe final ---
   df_final <- do.call(rbind, canciones)
-  
-  df_final$tempo <- round(df_final$tempo,2)
-  df_final$TempoLog<-round(log2(df_final$tempo),4)
-  
-  df_total <- features %>%
-    left_join(df_final %>% select(-tempo, -Genero), by = "Song_Name")
-  df_total <- df_total %>% 
-    select(-Genero, Genero)
-  return (df_total)
+
+df_final$tempo <- as.numeric(df_final$tempo)
+df_final$tempo <- round(df_final$tempo, 2)
+df_final$TempoLog <- round(log2(df_final$tempo), 4)
+
+return(df_final)
+
   
 }
 
@@ -160,8 +158,9 @@ añadir_features <- function(ruta_csv, carpeta){
 
 
 ```{r}
-df_completo <- añadir_features("features_opera.csv","data/cancionwap")
+df_completo <- añadir_features("features_opera.csv", "cancionwav")
 write.csv(df_completo, "features_opera.csv", row.names = FALSE)
+
 ```
 
 
