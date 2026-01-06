@@ -237,7 +237,8 @@ for (i in seq_along(songs_list)) {
 rm(list = c('acv','aux')) #quitamos esto de la memoria que ya no nos sirve
 
 
-features <- data.frame(AVG_Energy = avg_energy,
+features <- data.frame(Song_Name  = names_files,
+                       AVG_Energy = avg_energy,
                        SD_Energy  = sd_energy,
                        ZCR_mean = ZCR_mean,
                        ZCR_sd   = ZCR_sd,
