@@ -29,6 +29,8 @@ View(features_music)
 #Convertimos a factor la columna Genero
 ```{r}
 features_music$Genero <- as.factor(features_music$Genero)
+features_music %>% 
+  select(-Song_Name)
 ```
 
 #Creamos la partición en train-test
@@ -72,6 +74,64 @@ predicciones <- predict(rf_model, test_data)
 mc <- confusionMatrix(predicciones, test_data$Genero)
 print(mc)
 ```
+
+#Analizamos importancia de características
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# 1. Extraer la importancia y convertirla en un dataframe
+importancia_df <- as.data.frame(importance(rf_model))
+importancia_df$Variable <- rownames(importancia_df)
+
+# 2. Quedarnos con el "MeanDecreaseGini" (pureza del nodo) o "MeanDecreaseAccuracy"
+# Vamos a ordenar por MeanDecreaseGini
+importancia_df <- importancia_df %>%
+  arrange(desc(MeanDecreaseGini))
+
+# 3. Graficar
+ggplot(importancia_df, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() + # Girar para que se lean bien los nombres
+  labs(title = "Importancia de las Características (Gini Index)",
+       x = "Variables",
+       y = "Importancia (Mean Decrease Gini)") +
+  theme_minimal()
+```
+# Analizamos correlaciones
+```{r}
+if(!require(corrplot)) install.packages("corrplot")
+library(corrplot)
+
+
+predictores_num <- features_music %>%
+  select(where(is.numeric)) 
+
+# Calcular la matriz de correlación
+matriz_cor <- cor(predictores_num, use = "complete.obs")
+
+# Configurar una paleta de colores profesional
+colores_profesionales <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))(200)
+
+
+# Ajustamos los márgenes para que no se corte el título
+par(mar = c(1, 1, 3, 1)) 
+
+corrplot(matriz_cor, 
+         method = "circle",       
+         type = "lower",          
+         order = "hclust",        
+         col = colores_profesionales, 
+         tl.col = "black",       
+         tl.srt = 45,            
+         tl.cex = 0.7,            
+         cl.ratio = 0.2,          
+         title = "Mapa de Correlaciones (Tamaño y Color)"
+)
+```
+
+
 
 
 
