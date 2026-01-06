@@ -8,9 +8,9 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
+genero <- "Jazz" #pon aqui el genere que te ha tocado, primera en mayus
 #carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-carpeta <- "../MusicaRap/"
+carpeta <- "./canciones/"
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -170,6 +170,31 @@ extraer_espectrales <- function(audio){
 }
 
 
+#Espectrograma de MEL
+espectro_MEL<- function( audio,FS_OBJETIVO ){
+  
+  
+  # Resampling si es necesario
+  if (audio@samp.rate != FS_OBJETIVO) {
+    if (audio@samp.rate > FS_OBJETIVO) {
+      audio <- downsample(audio, FS_OBJETIVO)
+    } 
+  }
+  
+  # numcep = 13 es estándar. nbands controla las bandas Mel.
+  mel_spect_db <- melfcc(audio, 
+                         sr = FS_OBJETIVO, 
+                         numcep = 13, 
+                         wintime = 0.025, 
+                         hoptime = 0.010)
+  
+  #  Calcular Mean y SD
+  mel_mean <- mean(mel_spect_db,na.rm = TRUE)
+  mel_sd <- sd(mel_spect_db,na.rm = TRUE)
+  return(c(mel_mean, mel_sd))
+}
+
+
 ## Importamos los datos
 
 names_files <- list.files(path=carpeta, 
@@ -204,6 +229,8 @@ BER_mid      <- c()
 BER_high_mid <- c()
 BER_treble   <- c()
 
+MEL_mean <- c()
+MEL_sd <- c()
 
 for (i in 1:length(songs_list)) {
   sound      <- songs_list[[i]]@left
@@ -236,6 +263,10 @@ for (i in 1:length(songs_list)) {
   BER_mid      <- c(BER_mid,      ber_vals[4])
   BER_high_mid <- c(BER_high_mid, ber_vals[5])
   BER_treble   <- c(BER_treble,   ber_vals[6])
+  
+  aux     <- espectro_MEL(songs_list[[i]],48000)
+  MEL_mean   <- c(MEL_mean, aux[1])
+  MEL_sd     <- c(MEL_sd,   aux[2])
 }
 
 # Guardar plots ZCR
@@ -269,7 +300,9 @@ features <- data.frame(Song_Name= song_names,
                        BER_low_mid  = BER_low_mid,
                        BER_mid      = BER_mid,
                        BER_high_mid = BER_high_mid,
-                       BER_treble   = BER_treble
+                       BER_treble   = BER_treble,
+                       MEL_mean = MEL_mean,
+                       MEL_sd = MEL_sd
 )
 
 
@@ -281,3 +314,4 @@ features <- features %>% mutate(Genero = genero)
 # Exportamos
 
 write.csv(features, "features_prueba.csv", row.names = FALSE)
+
