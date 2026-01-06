@@ -8,13 +8,17 @@ date: "2026-01-06"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
 ```{r}
 pacman::p_load(reticulate)
 pacman::p_load(dplyr)
 pacman::p_load("tuneR")
 pacman::p_load("seewave")
 pacman::p_load(readr)
+```
+
+
+```{r}
+
 
 configuracion_librosa <- function(){
   # Instalar Miniconda (esto crea un Python real y funcional para R)
