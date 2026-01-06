@@ -31,7 +31,10 @@ configuracion_librosa <- function(){
     pip = TRUE
   )
 }
+```
 
+
+```{r}
 configuracion_librosa()
 ```
 
