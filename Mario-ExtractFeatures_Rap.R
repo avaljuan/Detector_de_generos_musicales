@@ -313,5 +313,5 @@ features <- features %>% mutate(Genero = genero)
 
 # Exportamos
 
-write.csv(features, "features_prueba.csv", row.names = FALSE)
+write.csv(features, "prueba_jazz.csv", row.names = FALSE)
 
