@@ -8,9 +8,9 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Jazz" #pon aqui el genere que te ha tocado, primera en mayus
+genero <- "Reggae" #pon aqui el genere que te ha tocado, primera en mayus
 #carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-carpeta <- "./canciones/"
+carpeta <- "reggae/"
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -264,7 +264,7 @@ for (i in 1:length(songs_list)) {
   BER_high_mid <- c(BER_high_mid, ber_vals[5])
   BER_treble   <- c(BER_treble,   ber_vals[6])
   
-  aux     <- espectro_MEL(songs_list[[i]],48000)
+  aux     <- espectro_MEL(songs_list[[i]],songs_list[[i]]@samp.rate)
   MEL_mean   <- c(MEL_mean, aux[1])
   MEL_sd     <- c(MEL_sd,   aux[2])
 }
@@ -313,5 +313,5 @@ features <- features %>% mutate(Genero = genero)
 
 # Exportamos
 
-write.csv(features, "prueba_jazz.csv", row.names = FALSE)
+write.csv(features, "features_reggae.csv", row.names = FALSE)
 
