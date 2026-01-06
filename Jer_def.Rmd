@@ -143,12 +143,17 @@ añadir_features <- function(ruta_csv, carpeta){
   
   # --- 3. Unir todo en el dataframe final ---
   df_final <- do.call(rbind, canciones)
+  
+  df_final$tempo <- round(df_final$tempo,2)
+  df_final$TempoLog<-round(log2(df_final$tempo),4)
+  
+  df_total <- features %>%
+    left_join(df_final %>% select(-tempo, -Genero), by = "Song_Name")
+  df_total <- df_total %>% 
+    select(-Genero, Genero)
 
-df_final$tempo <- as.numeric(df_final$tempo)
-df_final$tempo <- round(df_final$tempo, 2)
-df_final$TempoLog <- round(log2(df_final$tempo), 4)
-
-return(df_final)
+  
+  return (df_total)
 
   
 }
@@ -159,7 +164,7 @@ return(df_final)
 
 ```{r}
 df_completo <- añadir_features("features_opera.csv", "cancionwav")
-write.csv(df_completo, "features_opera.csv", row.names = FALSE)
+write.csv(df_completo, "features_Opera.csv", row.names = FALSE)
 
 ```
 
