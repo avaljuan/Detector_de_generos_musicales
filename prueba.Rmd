@@ -1,0 +1,170 @@
+---
+title: "Clasificador_generos"
+author: "Axel Valton"
+date: "2026-01-05"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+```
+
+```{r}
+
+library(readr)
+library(dplyr)
+library(caret)
+library(randomForest)
+library(ggplot2)
+library(corrplot)
+
+set.seed(123)
+
+# 1) Archivos
+features <- list.files(path=".", pattern="^features_.*\\.csv$")
+print(features)
+
+# 2) Leer y unir
+features_music <- features |>
+  lapply(\(f) read_csv(f, show_col_types = FALSE)) |>
+  bind_rows()
+
+# 3) Preparar datos: Genero factor y quitar Song_Name
+features_music$Genero <- as.factor(features_music$Genero)
+features_music <- features_music %>% select(-any_of("Song_Name"))
+
+cat("Song_Name presente?:", "Song_Name" %in% names(features_music), "\n")
+cat("Muestras por clase:\n")
+print(table(features_music$Genero))
+
+# 4) Train/test
+trainIndex <- createDataPartition(features_music$Genero, p = 0.7, list = FALSE)
+train_data <- features_music[trainIndex, ]
+test_data  <- features_music[-trainIndex, ]
+
+# Balanceo
+n_min <- min(table(train_data$Genero))
+
+# 5) Modelo base
+rf_model <- randomForest(
+  Genero ~ .,
+  data = train_data,
+  ntree = 500,
+  importance = TRUE,
+  sampsize = rep(n_min, length(levels(train_data$Genero))),
+  strata = train_data$Genero
+)
+
+cat("\n--- MODELO BASE ---\n")
+print(rf_model)
+
+pred_base <- predict(rf_model, test_data)
+mc_base <- confusionMatrix(pred_base, test_data$Genero)
+print(mc_base)
+
+# 6) Importancia (gráfica)
+importancia_df <- as.data.frame(importance(rf_model))
+importancia_df$Variable <- rownames(importancia_df)
+
+# si existe MeanDecreaseGini, la usamos
+if ("MeanDecreaseGini" %in% names(importancia_df)) {
+  importancia_df <- importancia_df %>% arrange(desc(MeanDecreaseGini))
+
+  ggplot(importancia_df, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = "Importancia de las Características (Gini Index)",
+         x = "Variables", y = "Importancia (MeanDecreaseGini)") +
+    theme_minimal()
+} else if ("MeanDecreaseAccuracy" %in% names(importancia_df)) {
+  importancia_df <- importancia_df %>% arrange(desc(MeanDecreaseAccuracy))
+
+  ggplot(importancia_df, aes(x = reorder(Variable, MeanDecreaseAccuracy), y = MeanDecreaseAccuracy)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = "Importancia de las Características (Accuracy)",
+         x = "Variables", y = "Importancia (MeanDecreaseAccuracy)") +
+    theme_minimal()
+}
+
+# 7) Correlaciones (gráfica)
+predictores_num <- features_music %>% select(where(is.numeric))
+matriz_cor <- cor(predictores_num, use = "complete.obs")
+
+colores_profesionales <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))(200)
+par(mar = c(1, 1, 3, 1))
+
+corrplot(matriz_cor,
+         method = "circle",
+         type = "lower",
+         order = "hclust",
+         col = colores_profesionales,
+         tl.col = "black",
+         tl.srt = 45,
+         tl.cex = 0.7,
+         cl.ratio = 0.2,
+         title = "Mapa de Correlaciones (Tamaño y Color)")
+
+# 8) Tuning mtry para mejorar Jazz/Rap/Reggae + gráfica
+mtry_vals <- 2:min(12, ncol(train_data) - 1)
+res <- data.frame(mtry=integer(), acc=double(), sens_JRR=double())
+
+for (m in mtry_vals) {
+  set.seed(123)
+  rf_tmp <- randomForest(
+    Genero ~ .,
+    data = train_data,
+    ntree = 800,
+    mtry = m,
+    sampsize = rep(n_min, length(levels(train_data$Genero))),
+    strata = train_data$Genero
+  )
+  pred <- predict(rf_tmp, test_data)
+  cm <- confusionMatrix(pred, test_data$Genero)
+
+  # objetivo: media de sensibilidad de Jazz/Rap/Reggae
+  sens_JRR <- mean(cm$byClass[c("Class: Jazz","Class: Rap","Class: Reggae"), "Sensitivity"])
+
+  res <- rbind(res, data.frame(
+    mtry = m,
+    acc = as.numeric(cm$overall["Accuracy"]),
+    sens_JRR = sens_JRR
+  ))
+}
+
+best_row <- res[order(-res$sens_JRR, -res$acc), ][1, ]
+best_mtry <- best_row$mtry
+
+cat("\n--- TOP tuning (por Sensibilidad Jazz/Rap/Reggae) ---\n")
+print(res[order(-res$sens_JRR, -res$acc), ])
+
+cat("\nMejor mtry:", best_mtry, "\n")
+
+# gráfica del tuning
+ggplot(res, aes(x = mtry, y = sens_JRR)) +
+  geom_line() +
+  geom_point() +
+  geom_vline(xintercept = best_mtry, linetype = "dashed") +
+  labs(title = "Tuning mtry (objetivo: Sensibilidad media Jazz/Rap/Reggae)",
+       x = "mtry", y = "Sensibilidad media (Jazz/Rap/Reggae)") +
+  theme_minimal()
+
+# 9) Modelo final con best_mtry + matriz
+rf_best <- randomForest(
+  Genero ~ .,
+  data = train_data,
+  ntree = 1500,
+  mtry = best_mtry,
+  importance = TRUE,
+  sampsize = rep(n_min, length(levels(train_data$Genero))),
+  strata = train_data$Genero
+)
+
+cat("\n--- MODELO FINAL (mtry tuneado) ---\n")
+pred_best <- predict(rf_best, test_data)
+mc_best <- confusionMatrix(pred_best, test_data$Genero)
+print(mc_best)
+
+```
+
