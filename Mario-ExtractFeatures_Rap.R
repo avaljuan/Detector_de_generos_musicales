@@ -8,9 +8,9 @@ rm(list = ls())
 
 ## Adaptar
 
-genero <- "Jazz" #pon aqui el genere que te ha tocado, primera en mayus
+genero <- "Rap" #pon aqui el genere que te ha tocado, primera en mayus
 #carpeta <- "../MusicaRap/" #pon aqui el nombre de la carpeta que contiene los archivos
-carpeta <- "./canciones/"
+carpeta <- "../MusicaRap/"
 ## Declaramos funciones
 
 importar_audio_normalizado <- function(path) {
@@ -313,5 +313,5 @@ features <- features %>% mutate(Genero = genero)
 
 # Exportamos
 
-write.csv(features, "prueba_jazz.csv", row.names = FALSE)
+write.csv(features, "features_rap.csv", row.names = FALSE)
 

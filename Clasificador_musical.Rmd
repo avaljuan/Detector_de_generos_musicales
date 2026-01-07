@@ -29,7 +29,7 @@ View(features_music)
 #Convertimos a factor la columna Genero
 ```{r}
 features_music$Genero <- as.factor(features_music$Genero)
-features_music %>% 
+features_music <- features_music %>% 
   select(-Song_Name)
 ```
 
@@ -65,6 +65,26 @@ rf_model <- randomForest(
 
 print(rf_model)
 ```
+```{r}
+library(dplyr)
+
+# 1. Extraemos las predicciones hechas sobre el propio set de entrenamiento
+# El modelo guarda sus predicciones 'internas' en rf_model$predicted
+predicciones_entrenamiento <- rf_model$predicted
+
+# 2. Creamos la tabla de errores comparando con los datos originales de train_data
+errores_entrenamiento <- train_data %>%
+  mutate(Prediccion_OOB = predicciones_entrenamiento) %>%
+  filter(Genero != Prediccion_OOB) %>%
+  select(Genero, Prediccion_OOB)
+
+# 3. Ver las canciones que causaron confusión
+print(errores_entrenamiento)
+
+# Opcional: ¿Cuántas veces se equivocó exactamente en cada cruce?
+table(Reales = errores_entrenamiento$Genero, Predichas = errores_entrenamiento$Prediccion_OOB)
+```
+
 #Predecimos y generamos la matriz de confusión
 ```{r}
 # Predecir en el set de prueba
