@@ -13,6 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 features <- list.files(path=".")[grepl(pattern="features.*",x=list.files(path="."))]
 ```
 
+
+
 #Cargamos y creamos el dataframe
 
 ```{r}
@@ -30,7 +32,7 @@ View(features_music)
 ```{r}
 features_music$Genero <- as.factor(features_music$Genero)
 features_music <- features_music %>% 
-  select(-Song_Name)
+  select(-Song_Name,-mfcc_2,-Centroid)
 ```
 
 #Creamos la partición en train-test

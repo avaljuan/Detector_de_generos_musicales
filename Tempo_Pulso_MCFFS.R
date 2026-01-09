@@ -20,7 +20,7 @@ configuracion_librosa <- function(){
   )
 }
 
-configuracion_librosa()
+#configuracion_librosa()
 
 #Importamos librosa
 librosa <- import("librosa")
@@ -93,7 +93,7 @@ añadir_features <- function(ruta_csv, carpeta){
   
   for (i in 1:length(nombres_canciones)) {
     
-    ruta_completa <- paste0("..\\MusicaRap\\", nombres_canciones[i])
+    ruta_completa <- paste0(carpeta, nombres_canciones[i])
     
     # A. Extraemos Ritmo (BPM y Pulso)
     res_ritmo <- calcular_ritmo_avanzado(ruta_completa)
@@ -106,7 +106,7 @@ añadir_features <- function(ruta_csv, carpeta){
       Song_Name = nombres_canciones[i], 
       tempo          = res_ritmo$bpm,
       Fuerza_Pulso   = res_ritmo$pulse_strength,
-      Genero         = "Rap",
+      Genero         = "Reggae",
       stringsAsFactors = FALSE
     )
     
@@ -134,5 +134,5 @@ añadir_features <- function(ruta_csv, carpeta){
   
 }
 
-df_completo <- añadir_features("features_rap.csv","../MusicaRap/")
-write.csv(df_completo, "features_rap.csv", row.names = FALSE)
+df_completo <- añadir_features("features_reggae.csv","../Reggae/")
+write.csv(df_completo, "features_reggae.csv", row.names = FALSE)
