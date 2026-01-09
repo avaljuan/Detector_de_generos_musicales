@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Genre : opera
-ZCR
+ZCR!
 
 
 ```{r}
@@ -205,8 +205,12 @@ extraer_espectrales <- function(audio){
 
 
 ```{r}
-#Espectrograma de MEL
-espectro_MEL <- function(audio, FS_OBJETIVO ){
+# ==========================
+# MEL / MFCC
+# 26 features: 13 medias + 13 sds (por coeficiente MFCC)
+# ==========================
+
+espectro_MEL_v2 <- function(audio, FS_OBJETIVO ){
 
   # Resampling si es necesario
   if (audio@samp.rate != FS_OBJETIVO) {
@@ -215,19 +219,20 @@ espectro_MEL <- function(audio, FS_OBJETIVO ){
     }
   }
 
-  # MFCC (Mel). numcep = 13 estándar
+  # Matriz MFCC: filas=tiempo, columnas=13 coeficientes
   mel_spect_db <- melfcc(audio,
                          sr = FS_OBJETIVO,
                          numcep = 13,
                          wintime = 0.025,
                          hoptime = 0.010)
 
-  # Mean y SD
-  mel_mean <- mean(mel_spect_db, na.rm = TRUE)
-  mel_sd   <- sd(mel_spect_db, na.rm = TRUE)
+  # 13 medias y 13 sds (una por coeficiente)
+  mel_means <- colMeans(mel_spect_db, na.rm = TRUE)
+  mel_sds   <- apply(mel_spect_db, 2, sd, na.rm = TRUE)
 
-  return(c(mel_mean, mel_sd))
+  return(c(mel_means, mel_sds))
 }
+
 
 ```
 
@@ -271,8 +276,10 @@ BER_mid      <- c()
 BER_high_mid <- c()
 BER_treble   <- c()
 
-MEL_mean <- c()
-MEL_sd <- c()
+
+# MEL 26 características (13 mean + 13 sd)
+matriz_mel <- matrix(nrow = length(songs_list), ncol = 26)
+
 
 for (i in 1:length(songs_list)) {
   sound      <- songs_list[[i]]@left
@@ -306,9 +313,8 @@ for (i in 1:length(songs_list)) {
   BER_high_mid <- c(BER_high_mid, ber_vals[5])
   BER_treble   <- c(BER_treble,   ber_vals[6])
   
-  aux     <- espectro_MEL(songs_list[[i]],48000)
-  MEL_mean   <- c(MEL_mean, aux[1])
-  MEL_sd     <- c(MEL_sd,   aux[2])
+  matriz_mel[i, ] <- espectro_MEL_v2(songs_list[[i]], 48000)
+
 }
 
 
@@ -353,10 +359,20 @@ features <- data.frame(
   BER_low_mid  = BER_low_mid,
   BER_mid      = BER_mid,
   BER_high_mid = BER_high_mid,
-  BER_treble   = BER_treble,
-  MEL_mean = MEL_mean,
-  MEL_sd = MEL_sd
+  BER_treble   = BER_treble
+  
 )
+
+# Nombres columnas MEL (13 mean + 13 sd)
+nombres_mel_mean  <- paste0("MEL_", 1:13, "_mean")
+nombres_mel_sd    <- paste0("MEL_", 1:13, "_sd")
+nombres_mel_total <- c(nombres_mel_mean, nombres_mel_sd)
+
+df_mel <- as.data.frame(matriz_mel)
+colnames(df_mel) <- nombres_mel_total
+
+# Unimos MEL al dataframe final
+features <- cbind(features, df_mel)
 
 
 ```
