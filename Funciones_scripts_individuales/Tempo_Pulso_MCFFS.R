@@ -8,7 +8,7 @@ configuracion_librosa <- function(){
   # Instalar Miniconda (esto crea un Python real y funcional para R)
   reticulate::install_miniconda(force = TRUE)
   #
-  # # 3. Crear un entorno específico para tu clasificador de audio
+  #  Crear un entorno específico para tu clasificador de audio
   # # Usaremos Python 3.10 porque es el que mejor se lleva con Librosa
   reticulate::conda_create("env_audio", python_version = "3.10")
   use_condaenv("env_audio", required = TRUE)
@@ -27,21 +27,20 @@ librosa <- import("librosa")
 np <- import("numpy")
 
 calcular_ritmo_avanzado <- function(ruta_archivo) {
-  # 1. Cargar con los mismos parámetros que tu función de R
-  # sr=22050 (Frecuencia)
+  # Cargar con los mismos parámetros que tu función de R
   # mono=TRUE (Un solo canal)
   # duration=90 (Límite de tiempo)
   audio_data <- librosa$load(ruta_archivo, sr = 48000, mono = TRUE, offset=0.0,duration = 90.0)
   
   y <- audio_data[[1]]
   sr <- audio_data[[2]]
-  # 2. QUITAR DC OFFSET
+  # QUITAR DC OFFSET
   # Restamos la media para centrar la onda en 0.0
   y <- y - mean(y)
-  # 2. Onset Strength
+  # Onset Strength
   oenv <- librosa$onset$onset_strength(y = y, sr = sr)
   
-  # 3. Tempo (BPM)
+  # Tempo (BPM)
   tempo_estimado <- librosa$beat$tempo(onset_envelope = oenv, sr = sr)
   bpm <- as.numeric(tempo_estimado)
   
@@ -49,7 +48,7 @@ calcular_ritmo_avanzado <- function(ruta_archivo) {
   if (bpm > 160) bpm <- bpm / 2
   if (bpm < 65)  bpm <- bpm * 2
   
-  # 4. Fuerza del Pulso
+  # Fuerza del Pulso
   fuerza_pulso <- mean(oenv)
   
   return(list(
@@ -61,24 +60,22 @@ calcular_ritmo_avanzado <- function(ruta_archivo) {
 # Función para extraer mccfs
 
 extraer_mfccs_filtrados <- function(ruta_archivo) {
-  # 1. Cargar con los parámetros estándar
+  # Cargar con los parámetros estándar
   audio_data <- librosa$load(ruta_archivo, sr = 48000, mono = TRUE, duration = 90.0)
   y <- audio_data[[1]]
   sr <- audio_data[[2]]
   y <- y - mean(y)
   
-  # 2. Pedimos 9 coeficientes (el 1 es energía, del 2 al 9 son timbre)
+  # Pedimos 9 coeficientes 
   mfccs <- librosa$feature$mfcc(y = y, sr = sr, n_mfcc = as.integer(9))
   
-  # 3. Calculamos la media de cada uno
+  #  Calculamos la media de cada uno
   mfccs_mean <- rowMeans(mfccs)
   
-  # 4. DESCARTAMOS el primero (índice 1) y nos quedamos con los 8 restantes
-  # En Python/Librosa el índice 0 es el MFCC 1. 
-  # Aquí tomamos del 2 al 9.
+
   mfccs_utiles <- mfccs_mean[2:9]
   
-  # 5. Nombrar del 2 al 9 para no confundirnos
+
   nombres <- paste0("mfcc_", 2:9)
   res <- as.list(mfccs_utiles)
   names(res) <- nombres
@@ -95,13 +92,13 @@ añadir_features <- function(ruta_csv, carpeta){
     
     ruta_completa <- paste0(carpeta, nombres_canciones[i])
     
-    # A. Extraemos Ritmo (BPM y Pulso)
+    # Extraemos Ritmo (BPM y Pulso)
     res_ritmo <- calcular_ritmo_avanzado(ruta_completa)
     
-    # B. Extraemos Timbre (MFCCs 2 al 9)
+    #  Extraemos Timbre (MFCCs 2 al 9)
     res_mfccs <- extraer_mfccs_filtrados(ruta_completa)
     
-    # C. Creamos la fila base con los datos de ritmo
+    # Creamos la fila base con los datos de ritmo
     fila_actual <- data.frame(
       Song_Name = nombres_canciones[i], 
       tempo          = res_ritmo$bpm,
@@ -110,7 +107,7 @@ añadir_features <- function(ruta_csv, carpeta){
       stringsAsFactors = FALSE
     )
     
-    # D. Añadimos los MFCCs a la fila usando cbind
+    # Añadimos los MFCCs a la fila usando cbind
     # Convertimos la lista de MFCCs en un dataframe de una fila
     fila_completa <- cbind(fila_actual, as.data.frame(res_mfccs))
     
@@ -120,7 +117,7 @@ añadir_features <- function(ruta_csv, carpeta){
     cat("Procesado:", i, "/", length(nombres_canciones), "-", nombres_canciones[i], "\n")
   }
   
-  # --- 3. Unir todo en el dataframe final ---
+  # -Unir odo en el dataframe final 
   df_final <- do.call(rbind, canciones)
   
   df_final$tempo <- round(df_final$tempo,2)
