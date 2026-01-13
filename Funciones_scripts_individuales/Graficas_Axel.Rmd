@@ -1,0 +1,81 @@
+---
+title: "Graficas_Axel"
+author: "Axel Valton"
+date: "2026-01-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Obtenemos los nombres de los csv asociados a cada género
+```{r}
+features <- list.files(path="..")[grepl(pattern="features.*",x=list.files(path=".."))]
+```
+
+
+
+#Cargamos y creamos el dataframe con todos los géneros
+
+```{r}
+library(readr)
+features_music <- NULL
+for (nombre in features){
+  features_genero <-  read_csv(paste0("../",nombre))
+  features_music <- rbind(features_music, features_genero)
+}
+```
+
+
+#Gráficos de violín de Fuerza de Pulso
+```{r}
+library(ggplot2)
+
+
+ggplot(features_music, aes(x = Genero, y = Fuerza_Pulso, fill = Genero)) +
+  geom_violin(trim = FALSE) +               
+  geom_boxplot(width = 0.1, fill = "white") + 
+  theme_minimal() +                         
+  labs(title = "Distribución de Fuerza de Pulso por Género",
+       x = "Género",
+       y = "Fuerza de Pulso") +
+  theme(legend.position = "none")           
+ggsave("grafico_violin_pulso.png", width = 8, height = 6, dpi = 300)
+```
+
+#Gráficos de violín de MFCC
+```{r}
+
+library(tidyverse)
+
+
+datos_mfcc_largos <- features_music %>%
+  select(Genero, matches("^mfcc_(1|3|6|11)_sd", ignore.case = TRUE)) %>% 
+  pivot_longer(
+    cols = -Genero, 
+    names_to = "Variable_MFCC", 
+    values_to = "Valor")
+
+
+ggplot(datos_mfcc_largos, aes(x = Genero, y = Valor, fill = Genero)) +
+  geom_violin(trim = FALSE) +
+  geom_boxplot(width = 0.1, fill = "white", outlier.shape = NA) +
+  
+
+  facet_wrap(~ Variable_MFCC, ncol = 2, scales = "free_y") +
+  
+  theme_minimal() +
+  labs(
+    title = "Coeficientes MFCC por Género",
+    x = "Género",
+    y = "Valor del Coeficiente") +
+  theme(
+    legend.position = "none",
+    strip.text = element_text(face = "bold"), 
+    axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+ggsave("grafico_mfcc_final.png", width = 10, height = 8, dpi = 300)
+```
+

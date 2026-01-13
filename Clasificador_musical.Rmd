@@ -8,14 +8,15 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-#Obtenemos los nombres de los archivos de features
+
+# Obtenemos los nombres de los csv asociados a cada género
 ```{r}
 features <- list.files(path=".")[grepl(pattern="features.*",x=list.files(path="."))]
 ```
 
 
 
-#Cargamos y creamos el dataframe
+#Cargamos y creamos el dataframe con todos los géneros
 
 ```{r}
 library(readr)
@@ -24,15 +25,35 @@ for (nombre in features){
   features_genero <-  read_csv(nombre)
   features_music <- rbind(features_music, features_genero)
 }
-
-
-View(features_music)
 ```
-#Convertimos a factor la columna Genero
+
+# Observamos un poco la estructura de nuestras características
+
+```{r}
+resumen_genero <- features_music %>%
+  group_by(Genero) %>%
+  summarise(across(
+    where(is.numeric), 
+    list(
+      promedio = ~mean(.x, na.rm = TRUE),
+      minimo   = ~min(.x, na.rm = TRUE),
+      maximo   = ~max(.x, na.rm = TRUE)
+    ),
+    .names = "{.col}_{.fn}"
+  ))
+resumen_genero
+```
+
+
+
+#Convertimos a factor la columna Genero y seleccionamos features que usaremos
+
 ```{r}
 features_music$Genero <- as.factor(features_music$Genero)
-features_music <- features_music %>% 
-  select(-Song_Name,-mfcc_2,-Centroid)
+
+# Se seleccionan las características consideradas relevantes para el modelo tras haber hecho el análisis de correlaciones y features importance (chunks finales)
+ features_music <- features_music %>%
+   select(-Song_Name,-MFCC_13_mean,-MFCC_12_mean,-MFCC_8_mean,-MFCC_5_mean,-MFCC_7_mean,-MFCC_9_mean,-MFCC_10_mean,-MFCC_13_sd,-MFCC_12_sd,-MFCC_8_sd,-MFCC_5_sd,-MFCC_7_sd,-MFCC_9_sd,-MFCC_10_sd,-MFCC_2_mean,-MFCC_2_sd,-MFCC_4_sd,-MFCC_4_mean,-TempoLog,-Centroid,-SD_Energy,-MFCC_1_mean,-MFCC_3_mean,-MFCC_6_mean,-MFCC_11_mean,-Tempo_bpm)
 ```
 
 #Creamos la partición en train-test
@@ -40,62 +61,44 @@ features_music <- features_music %>%
 ```{r}
 library(caret)
 pacman::p_load(randomForest)
-set.seed(123) # Para que los resultados sean reproducibles
+set.seed(0) # Para que los resultados sean reproducibles
 
-# Creamos los índices para el 70% de entrenamiento
+# Creamos los índices para el 70% de entrenamiento (la función usada estratifica por defecto)
 trainIndex <- createDataPartition(features_music$Genero, p = 0.7, list = FALSE)
 
 train_data <- features_music[trainIndex, ]
 test_data  <- features_music[-trainIndex, ]
 ```
 
-# Entrenamos con balanceo de clases
-
+#Hacemos cross validation en train
 ```{r}
-# Buscamos cuántas muestras tiene el género con menos canciones
-n_min <- min(table(train_data$Genero))
+# 10-fold Cross-Validation
+control <- trainControl(method = "cv", number = 10)
 
-# Entrenar el Random Forest con Balanceo
-rf_model <- randomForest(
-  Genero ~ ., 
-  data = train_data, 
-  ntree = 500,           # Número de árboles
-  importance = TRUE,     # Para ver qué variables son más importantes
-  sampsize = rep(n_min, length(levels(train_data$Genero))), # BALANCEO AQUÍ
-  strata = train_data$Genero
-)
+n_min <- min(table(train_data$Genero))
+# Entrenar el modelo Random Forest usando Cross-Validation
+rf_model <- train(Genero ~ ., 
+                   data = train_data, 
+                   method = "rf", 
+                   trControl = control,
+                   ntree = 1500,
+                  importance = TRUE,
+                   sampsize = rep(n_min, length(levels(train_data$Genero))),
+                   strata = train_data$Genero)
 
 print(rf_model)
 ```
+
+#Realizamos las prediccion con el mejor modelo obtenido con cross validation
+
 ```{r}
-library(dplyr)
-
-# 1. Extraemos las predicciones hechas sobre el propio set de entrenamiento
-# El modelo guarda sus predicciones 'internas' en rf_model$predicted
-predicciones_entrenamiento <- rf_model$predicted
-
-# 2. Creamos la tabla de errores comparando con los datos originales de train_data
-errores_entrenamiento <- train_data %>%
-  mutate(Prediccion_OOB = predicciones_entrenamiento) %>%
-  filter(Genero != Prediccion_OOB) %>%
-  select(Genero, Prediccion_OOB)
-
-# 3. Ver las canciones que causaron confusión
-print(errores_entrenamiento)
-
-# Opcional: ¿Cuántas veces se equivocó exactamente en cada cruce?
-table(Reales = errores_entrenamiento$Genero, Predichas = errores_entrenamiento$Prediccion_OOB)
-```
-
-#Predecimos y generamos la matriz de confusión
-```{r}
-# Predecir en el set de prueba
+# Predicciones
 predicciones <- predict(rf_model, test_data)
 
-# Matriz de Confusión (ver aciertos y errores)
-mc <- confusionMatrix(predicciones, test_data$Genero)
-print(mc)
+# Matriz de confusión
+confusionMatrix(predicciones, test_data$Genero)
 ```
+
 
 #Analizamos importancia de características
 
@@ -103,19 +106,18 @@ print(mc)
 library(ggplot2)
 library(dplyr)
 
-# 1. Extraer la importancia y convertirla en un dataframe
-importancia_df <- as.data.frame(importance(rf_model))
+# Extraemos la importancia de las características
+importancia_df <- as.data.frame(importance(rf_model$finalModel))
 importancia_df$Variable <- rownames(importancia_df)
 
-# 2. Quedarnos con el "MeanDecreaseGini" (pureza del nodo) o "MeanDecreaseAccuracy"
-# Vamos a ordenar por MeanDecreaseGini
+# Las ordenamos por MeanDecreaseGini
 importancia_df <- importancia_df %>%
   arrange(desc(MeanDecreaseGini))
 
-# 3. Graficar
+# 3. Graficamos
 ggplot(importancia_df, aes(x = reorder(Variable, MeanDecreaseGini), y = MeanDecreaseGini)) +
   geom_bar(stat = "identity", fill = "steelblue") +
-  coord_flip() + # Girar para que se lean bien los nombres
+  coord_flip() + 
   labs(title = "Importancia de las Características (Gini Index)",
        x = "Variables",
        y = "Importancia (Mean Decrease Gini)") +
@@ -130,11 +132,10 @@ library(corrplot)
 predictores_num <- features_music %>%
   select(where(is.numeric)) 
 
-# Calcular la matriz de correlación
+# Calculamos la matriz de correlación
 matriz_cor <- cor(predictores_num, use = "complete.obs")
 
-# Configurar una paleta de colores profesional
-colores_profesionales <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))(200)
+colores <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))(200)
 
 
 # Ajustamos los márgenes para que no se corte el título
@@ -144,7 +145,7 @@ corrplot(matriz_cor,
          method = "circle",       
          type = "lower",          
          order = "hclust",        
-         col = colores_profesionales, 
+         col = colores, 
          tl.col = "black",       
          tl.srt = 45,            
          tl.cex = 0.7,            

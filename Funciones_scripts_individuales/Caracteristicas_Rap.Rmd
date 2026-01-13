@@ -1,0 +1,152 @@
+---
+title: "Caracteristicas_Rap"
+author: "Axel Valton"
+date: "2026-01-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(tuneR)
+library(seewave)
+```
+
+
+#Cargamos canciones, establecemos duración y normalizamos
+
+```{r}
+archivos <- paste0("../MusicaRap/",list.files("../MusicaRap"))
+
+df_musica <- data.frame(
+  nombres = list.files("../MusicaRap"), 
+  stringsAsFactors = FALSE
+)
+
+archivos <- paste0("../MusicaRap/", df_musica$nombres)
+library(tuneR)
+library(seewave)
+
+importar_audio_normalizado <- function(path, target_fs = 22050) {
+  # 1. Cargar
+  w <- tuneR::readWave(path)
+
+  # 2. Convertir a Mono
+  w <- tuneR::mono(w, which = "both")
+
+  # 3. Recortar (0 a 90 segundos)
+  w <- tuneR::extractWave(w, from = 0, to = 90, xunit = "time")
+
+  # 4. Extraer vector para procesar
+  x  <- w@left
+  fs <- w@samp.rate
+
+  # 5. Quitar DC (centrar la onda en 0)
+  x <- x - mean(x)
+
+  # 6. Resample a target_fs (si es necesario)
+  if (fs != target_fs) {
+    x <- seewave::resamp(x, f = fs, g = target_fs, output = "vector")
+    fs <- target_fs
+  }
+
+  # 7. Normalización a [-1, 1]
+  # Esta es la parte que querías asegurar
+  m <- max(abs(x))
+  if (m > 0) x <- x / m
+
+  # 8. Construir objeto Wave para uso interno en R
+  # Usamos bit = 32 y pcm = FALSE para que R entienda los decimales
+  w_final <- tuneR::Wave(
+    left = x, 
+    samp.rate = fs, 
+    bit = 32, 
+    pcm = FALSE
+  )
+
+  return(w_final)
+}
+```
+
+#AVG_ENERGY
+
+```{r}
+songs_list  <- list()
+
+for(path in archivos) {
+  songs_list <- append(songs_list,importar_audio_normalizado(path = path))
+}
+```
+
+```{r}
+calcular_energia<- function(songs_list){
+  avg_energy <- c()
+
+  for (song in songs_list) {
+    sound      <- song@left
+    
+    acv        <- acf(sound, plot = FALSE, type = "covariance", lag.max = 0)
+    
+    avg_energy <- c(avg_energy,as.numeric(acv$acf[1]))
+  }
+  rm(acv) #quitamos esto de la memoria que ya no nos sirve
+  return(avg_energy)
+}
+
+energias <- calcular_energia(songs_list)
+df_musica$AVG_Energy <- energias
+```
+
+#ZCR
+
+```{r}
+zcr_stats <- function(w, ms = 20, ovlp = 50){
+x  <- w@left
+fs <- w@samp.rate
+
+
+wl <- as.integer((ms/1000) * fs)
+Z  <- zcr(x, f = fs, wl = wl, ovlp = ovlp, plot = FALSE)
+zvals <- Z[, "zcr"]
+
+slope <- coef(lm(zvals ~ seq_along(zvals)))[2]
+
+zcr_mean <- mean(zvals)
+zcr_sd  <- sd(zvals)
+zcr_vec <- c(zcr_mean=zcr_mean,zcr_sd=zcr_sd)
+
+return(zcr_vec)
+}
+
+zcr_vec <- list(zcr_mean=c(),zcr_sd=c())
+for (song in songs_list){
+  zcr_res<-zcr_stats(song)
+  zcr_vec$zcr_mean <- c(zcr_vec$zcr_mean,zcr_res["zcr_mean"])
+  zcr_vec$zcr_sd <- c(zcr_vec$zcr_sd,zcr_res["zcr_sd"])
+}
+```
+```{r}
+df_musica$ZCR_mean <- zcr_vec$zcr_mean
+df_musica$ZCR_sd <- zcr_vec$zcr_sd
+```
+
+```{r}
+df_musica
+```
+
+
+
+#Tempo
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
