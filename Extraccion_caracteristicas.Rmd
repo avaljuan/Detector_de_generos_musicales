@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
   # Instalar Miniconda (esto crea un Python real y funcional para R)
   #reticulate::install_miniconda(force = TRUE)
   #
-  # # 3. Crear un entorno específico para tu clasificador de audio
+  # #  Crear un entorno específico para tu clasificador de audio
   # # Usaremos Python 3.10 porque es el que mejor se lleva con Librosa
   #reticulate::conda_create("env_audio", python_version = "3.10")
   #use_condaenv("env_audio", required = TRUE)
