@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
 ```
 
 # Obtenemos los nombres de los csv asociados a cada género
@@ -155,6 +156,9 @@ corrplot(matriz_cor,
 ```
 
 
+```{r}
+write_csv(features_music, "features_musica.csv")
+```
 
 
 
